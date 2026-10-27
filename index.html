@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartas de Alérgenos - Mapa</title>
+    
+    <!-- Librerías del Mapa (Leaflet) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="style_index.css">
+
+</head>
+<body>
+    <header>
+        <h1>Directorio de Alérgenos</h1>
+        <p>Encuentra restaurantes seguros cerca de ti</p>
+        
+        <!-- Botón a la pantalla de admin -->
+        <a href="admin.html" title="Panel de Administración">
+            <img src="pato_boton.jpeg" alt="Admin" class="admin-btn">
+        </a>
+    </header>
+    
+    <!-- El dibujo 100% visible y debajo de la franja -->
+    <div class="dibujo-cabecera"></div>
+    
+    <div class="container">
+        <div class="warning">
+            ⚠️ <b>Aviso:</b> La información mostrada es orientativa. Informa siempre al personal del restaurante sobre tus alergias antes de pedir.
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar restaurante, zona o dirección...">
+        </div>
+
+        <div id="map"></div>
+
+        <div id="restaurant-details">
+            <!-- Mensaje de carga inicial -->
+            <div class="placeholder-message">
+                Conectando con la base de datos... 📡
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de tipo módulo para que Firebase funcione correctamente -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9B5kr9lx2tPZDuF37xY5gpCSSfTLp6XI",
+            authDomain: "directorioalergenos.firebaseapp.com",
+            projectId: "directorioalergenos",
+            storageBucket: "directorioalergenos.firebasestorage.app",
+            messagingSenderId: "25958692428",
+            appId: "1:25958692428:web:a31a6e4444566d0e5aa6e9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let restaurants = [];
+        let currentMarkers = [];
+        let currentSearchText = '';
+        let selectedRestaurantName = null;
+
+        const map = L.map('map').setView([40.6007, -3.7079], 15);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri (Thailand), TomTom, 2012'
+        }).addTo(map);
+
+        async function cargarRestaurantes() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "restaurantes"));
+                
+                restaurants = [];
+                querySnapshot.forEach((doc) => {
+                    restaurants.push(doc.data());
+                });
+
+                updateView();
+            } catch (error) {
+                console.error("Error obteniendo datos: ", error);
+                document.getElementById('restaurant-details').innerHTML = `
+                    <div class="placeholder-message" style="color: #ef4444; border-color: #fca5a5;">
+                        ❌ Ups, no se pudo conectar con la base de datos.
+                    </div>
+                `;
+            }
+        }
+
+        function updateView() {
+            const lowerSearch = currentSearchText.toLowerCase();
+
+            const filteredRestaurants = restaurants.filter(restaurant => {
+                const rName = restaurant.name ? restaurant.name.toLowerCase() : '';
+                const rType = restaurant.type ? restaurant.type.toLowerCase() : '';
+                
+                if (lowerSearch === '') return true;
+                return rName.includes(lowerSearch) || rType.includes(lowerSearch);
+            });
+
+            currentMarkers.forEach(marker => map.removeLayer(marker));
+            currentMarkers = [];
+            
+            filteredRestaurants.forEach(restaurant => {
+                if(restaurant.lat && restaurant.lng) {
+                    const marker = L.marker([restaurant.lat, restaurant.lng]).addTo(map);
+                    marker.bindPopup(`<b>${restaurant.name}</b><br>Toca para ver la carta`);
+                    
+                    marker.on('click', () => {
+                        window.toggleRestaurantMenu(restaurant.name);
+                    });
+                    
+                    currentMarkers.push(marker);
+                }
+            });
+
+            const detailsDiv = document.getElementById('restaurant-details');
+            detailsDiv.innerHTML = '';
+
+            if (currentSearchText === '' && selectedRestaurantName === null) {
+                detailsDiv.innerHTML = `
+                    <div class="placeholder-message">
+                        Toca un restaurante en el mapa o usa el buscador para ver las cartas.
+                    </div>
+                `;
+                return;
+            }
+
+            if (filteredRestaurants.length === 0 && currentSearchText !== '') {
+                detailsDiv.innerHTML = `
+                    <div class="placeholder-message">
+                        No se han encontrado resultados para "${currentSearchText}".
+                    </div>
+                `;
+                return;
+            }
+
+            let restaurantsToRender = (currentSearchText === '') 
+                ? restaurants.filter(r => r.name === selectedRestaurantName) 
+                : filteredRestaurants;
+
+            let html = '';
+            restaurantsToRender.forEach(restaurant => {
+                const isSelected = restaurant.name === selectedRestaurantName;
+                const cardId = 'card-' + (restaurant.name ? restaurant.name.replace(/[^a-zA-Z0-9]/g, '-') : 'unknown');
+                
+                html += `
+                    <div class="restaurant-card" id="${cardId}">
+                        <div class="restaurant-header" onclick="toggleRestaurantMenu('${restaurant.name}')">
+                            <div class="restaurant-name">${restaurant.name || 'Sin nombre'}</div>
+                            <div class="restaurant-type">${restaurant.type || ''}</div>
+                        </div>
+                `;
+                
+                if (isSelected) {
+                    html += `<div class="menu-container">`;
+                    if (restaurant.hasMenu) {
+                        if (restaurant.menuType === 'pdf') {
+                            html += `
+                                <iframe src="${restaurant.menuSrc}" width="100%" height="600px" style="border:1px solid #cbd5e1; border-radius: 8px;"></iframe>
+                                <br>
+                                <a href="${restaurant.menuSrc}" target="_blank" class="view-btn">Abrir PDF en pantalla completa</a>
+                            `;
+                        } else if (restaurant.menuType === 'images' && Array.isArray(restaurant.menuSrc)) {
+                            let imagesHTML = '';
+                            restaurant.menuSrc.forEach(imagePath => {
+                                imagesHTML += `<img src="${imagePath}" alt="Parte de la carta" class="menu-image" style="margin-bottom: 15px;">`;
+                            });
+                            html += `
+                                ${imagesHTML}
+                                <div style="color: #64748b; font-size: 0.9em; margin-top: 10px;">Fin de la carta</div>
+                            `;
+                        }
+                    } else {
+                        html += `
+                            <div class="no-image-text">
+                                La carta de alérgenos de este restaurante se subirá próximamente.
+                            </div>
+                        `;
+                    }
+                    html += `</div>`; 
+                }
+                html += `</div>`; 
+            });
+
+            detailsDiv.innerHTML = html;
+        }
+
+        window.toggleRestaurantMenu = function(name) {
+            if (selectedRestaurantName === name) {
+                selectedRestaurantName = null;
+            } else {
+                selectedRestaurantName = name;
+            }
+            
+            updateView();
+            
+            if (selectedRestaurantName) {
+                setTimeout(() => {
+                    const cardId = 'card-' + name.replace(/[^a-zA-Z0-9]/g, '-');
+                    const el = document.getElementById(cardId);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100); 
+            }
+        };
+
+        document.getElementById('searchInput').addEventListener('input', (event) => {
+            currentSearchText = event.target.value;
+            selectedRestaurantName = null; 
+            updateView();
+        });
+
+        cargarRestaurantes();
+    </script>
+</body>
+</html>

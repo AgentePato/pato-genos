@@ -1,0 +1,172 @@
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    margin: 0; 
+    padding: 0; 
+    background-color: #f8fafc; 
+    color: #1e293b; 
+}
+
+/* Franja azul superior para el texto */
+header { 
+    background-color: #c7e3ee; 
+    color: #0f172a; 
+    padding: 25px 20px; 
+    text-align: center; 
+    position: relative; /* Añadido para que el botón se posicione correctamente */
+}
+header h1 { margin: 0; font-size: 2.2em; }
+header p { margin: 5px 0 0 0; font-size: 1.1em; opacity: 0.9; }
+
+/* Estilos del botón de admin adaptables a la pantalla */
+.admin-btn {
+    position: absolute;
+    top: 50%;
+    /* El margen derecho también se adapta (mínimo 10px, máximo 25px) */
+    right: clamp(10px, 4vw, 25px); 
+    transform: translateY(-50%);
+    
+    /* clamp(Mínimo, Ideal, Máximo) */
+    /* En móviles medirá 45px, y crecerá hasta 75px en pantallas grandes */
+    width: clamp(45px, 6vw, 75px);
+    height: clamp(45px, 6vw, 75px);
+    
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+.admin-btn:hover {
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* Contenedor exclusivo para el dibujo limpio */
+.dibujo-cabecera {
+    background-image: url('dibujo.jpeg'); 
+    aspect-ratio: 1900 / 600;
+    background-size: cover; 
+    background-position: center; 
+    width: 100%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.container { padding: 20px; max-width: 800px; margin: auto; }
+
+.warning { 
+    background: #fef3c7; 
+    color: #92400e; 
+    padding: 12px; 
+    border-radius: 8px; 
+    font-size: 0.85em; 
+    margin-bottom: 20px; 
+    border-left: 4px solid #f59e0b;
+}
+
+.search-container {
+    margin-bottom: 20px;
+}
+.search-input {
+    width: 100%;
+    padding: 14px 18px;
+    font-size: 1em;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    box-sizing: border-box;
+    outline: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    color: #334155;
+}
+.search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+#map { 
+    height: 400px; 
+    width: 100%; 
+    border-radius: 12px; 
+    margin-bottom: 25px;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    z-index: 1;
+}
+
+.restaurant-card { 
+    background: white; 
+    border-radius: 12px; 
+    margin-bottom: 20px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.restaurant-header {
+    background: #f1f5f9;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer; 
+    transition: background-color 0.2s;
+}
+.restaurant-header:hover {
+    background-color: #e2e8f0; 
+}
+.restaurant-name { font-size: 1.3em; font-weight: bold; margin-bottom: 4px; color: #0f172a; }
+.restaurant-type { color: #64748b; font-size: 0.9em; }
+
+.menu-container {
+    padding: 20px;
+    text-align: center;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+}
+
+.menu-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: block;
+    margin: 0 auto;
+}
+
+.no-image-text {
+    color: #94a3b8;
+    padding: 40px 20px;
+    font-style: italic;
+    border: 2px dashed #e2e8f0;
+    border-radius: 8px;
+}
+
+.view-btn {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background-color: #3b82f6;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.9em;
+    transition: background 0.2s;
+}
+.view-btn:hover { background-color: #2563eb; }
+
+.placeholder-message {
+    text-align: center;
+    color: #64748b;
+    padding: 40px 20px;
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+}
