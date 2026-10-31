@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Administración - Alérgenos</title>
-    
+
     <link rel="stylesheet" href="style_admin.css">
 
 </head>
@@ -15,18 +15,25 @@
 
     <!-- Este contenedor se pone por encima del pato -->
     <div class="contenedor-superpuesto">
-        
+
         <div id="adminBox" class="admin-box modo-login">
             <h2 id="admin-title">Pase VIP (Very Important Pato)<br>Contraseña:</h2>
-            
+
             <div id="login-section">
                 <input type="password" id="passInput" class="admin-input password-input" placeholder="••••••••">
                 <button onclick="verificarContraseña()" class="btn btn-blue">Entrar a la cocina</button>
+                <p id="login-error" role="alert" style="color: #b91c1c;"></p>
             </div>
 
             <div id="dashboard-section">
                 <input type="text" id="searchAdmin" class="admin-input" placeholder="🔍 Buscar restaurante...">
                 <button class="btn btn-green" onclick="abrirFormulario()">+ Añadir nuevo restaurante</button>
+                <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                    <button id="exportCsv" class="btn btn-gray" type="button" style="flex: 1; width: auto;">Descargar CSV</button>
+                    <label class="btn btn-gray" for="csvFile" style="flex: 1; width: auto; text-align: center; box-sizing: border-box;">Importar CSV</label>
+                    <input type="file" id="csvFile" accept=".csv,text/csv" hidden>
+                </div>
+                <p id="csv-status" role="status" style="margin: 0 0 12px;"></p>
                 <ul class="restaurant-list" id="listaRestaurantes">
                     <div style="padding: 20px; text-align: center; color: #64748b;">Cargando restaurantes...</div>
                 </ul>
@@ -39,7 +46,7 @@
                     <input type="number" id="f-lat" class="admin-input" placeholder="Latitud (ej: 40.59)" step="any">
                     <input type="number" id="f-lng" class="admin-input" placeholder="Longitud (ej: -3.70)" step="any">
                 </div>
-                
+
                 <label style="display: flex; align-items: center; margin-bottom: 12px; font-weight: 500; cursor: pointer;">
                     <input type="checkbox" id="f-hasMenu" onchange="toggleMenuFields()" style="margin-right: 10px; width: 18px; height: 18px;">
                     ¿Tiene carta de alérgenos?
@@ -59,47 +66,43 @@
                     <button class="btn btn-gray" onclick="cerrarFormulario()">Cancelar</button>
                 </div>
             </div>
-            
+
             <a href="index.html" class="btn-volver">← Volver al Mapa</a>
         </div>
 
     </div>
 
-    <!-- Firebase y Lógica -->
+    <script src="api-config.js"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyA9B5kr9lx2tPZDuF37xY5gpCSSfTLp6XI",
-            authDomain: "directorioalergenos.firebaseapp.com",
-            projectId: "directorioalergenos",
-            storageBucket: "directorioalergenos.firebasestorage.app",
-            messagingSenderId: "25958692428",
-            appId: "1:25958692428:web:a31a6e4444566d0e5aa6e9"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        
         let restaurants = [];
         let editingId = null;
+        let adminToken = null;
 
         window.verificarContraseña = async function() {
-            const pass = document.getElementById('passInput').value;
-            if (pass === "cuac123") {
+            const passwordInput = document.getElementById('passInput');
+            const loginError = document.getElementById('login-error');
+            loginError.textContent = '';
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/api/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: passwordInput.value })
+                });
+                if (!response.ok) throw new Error('Contraseña incorrecta o servidor no disponible.');
+                const result = await response.json();
+                adminToken = result.token;
                 document.getElementById('login-section').style.display = 'none';
-                
+
                 const box = document.getElementById('adminBox');
                 box.classList.remove('modo-login');
                 box.classList.add('modo-panel');
                 document.getElementById('admin-title').innerHTML = 'Panel de Control ⚙️';
-                
+
                 setTimeout(() => { document.getElementById('dashboard-section').style.display = 'block'; }, 300);
                 await cargarDatos();
-            } else {
-                alert("❌ Contraseña incorrecta. ¡Cuac!");
-                document.getElementById('passInput').value = "";
+            } catch (error) {
+                loginError.textContent = `❌ ${error.message}`;
+                passwordInput.value = '';
             }
         }
 
@@ -109,16 +112,12 @@
 
         async function cargarDatos() {
             try {
-                const querySnapshot = await getDocs(collection(db, "restaurantes"));
-                restaurants = [];
-                querySnapshot.forEach((doc) => {
-                    let data = doc.data();
-                    data.id = doc.id;
-                    restaurants.push(data);
-                });
+                const response = await fetch(`${window.API_BASE_URL}/api/restaurants`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                restaurants = await response.json();
                 renderLista(document.getElementById('searchAdmin').value);
             } catch (error) {
-                document.getElementById('listaRestaurantes').innerHTML = '<div style="color: red; padding: 20px;">Error al conectar con la base de datos.</div>';
+                document.getElementById('listaRestaurantes').textContent = `Error al conectar con la base de datos: ${error.message}`;
             }
         }
 
@@ -136,19 +135,95 @@
             filtrados.forEach(rest => {
                 const li = document.createElement('li');
                 li.className = 'restaurant-item';
-                li.innerHTML = `
-                    <span class="item-name" title="${rest.name}">${rest.name}</span>
-                    <div class="action-btns">
-                        <button class="btn-small bg-orange" onclick="abrirFormulario('${rest.id}')">✏️ Editar</button>
-                        <button class="btn-small bg-red" onclick="borrarRestaurante('${rest.id}', '${rest.name}')">🗑️ Borrar</button>
-                    </div>
-                `;
+                const name = document.createElement('span');
+                name.className = 'item-name';
+                name.title = rest.name;
+                name.textContent = rest.name;
+                const actions = document.createElement('div');
+                actions.className = 'action-btns';
+                const editButton = document.createElement('button');
+                editButton.className = 'btn-small bg-orange';
+                editButton.dataset.action = 'edit';
+                editButton.dataset.id = rest.id;
+                editButton.textContent = '✏️ Editar';
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn-small bg-red';
+                deleteButton.dataset.action = 'delete';
+                deleteButton.dataset.id = rest.id;
+                deleteButton.textContent = '🗑️ Borrar';
+                actions.append(editButton, deleteButton);
+                li.append(name, actions);
                 listaDiv.appendChild(li);
             });
         }
 
+        document.getElementById('listaRestaurantes').addEventListener('click', event => {
+            const button = event.target.closest('button[data-action]');
+            if (!button) return;
+            if (button.dataset.action === 'edit') window.abrirFormulario(button.dataset.id);
+            if (button.dataset.action === 'delete') {
+                const restaurant = restaurants.find(item => item.id === button.dataset.id);
+                if (restaurant) window.borrarRestaurante(restaurant.id, restaurant.name);
+            }
+        });
+
         document.getElementById('searchAdmin').addEventListener('input', (e) => {
             renderLista(e.target.value);
+        });
+
+        async function adminFetch(path, options = {}) {
+            const response = await fetch(`${window.API_BASE_URL}${path}`, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    Authorization: `Bearer ${adminToken}`
+                }
+            });
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                throw new Error(result.detail || `HTTP ${response.status}`);
+            }
+            return response;
+        }
+
+        document.getElementById('csvFile').addEventListener('change', async event => {
+            const input = event.target;
+            const status = document.getElementById('csv-status');
+            const file = input.files[0];
+            if (!file) return;
+            status.textContent = 'Importando CSV...';
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await adminFetch('/api/admin/restaurants/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                status.textContent = `Importación completada: ${result.created} creados y ${result.updated} actualizados.`;
+                await cargarDatos();
+            } catch (error) {
+                status.textContent = `Error al importar: ${error.message}`;
+            } finally {
+                input.value = '';
+            }
+        });
+
+        document.getElementById('exportCsv').addEventListener('click', async () => {
+            const status = document.getElementById('csv-status');
+            try {
+                const response = await adminFetch('/api/admin/restaurants/export');
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'restaurantes.csv';
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                status.textContent = 'CSV descargado.';
+            } catch (error) {
+                status.textContent = `Error al descargar: ${error.message}`;
+            }
         });
 
         window.toggleMenuFields = function() {
@@ -168,10 +243,10 @@
                 document.getElementById('f-type').value = rest.type || '';
                 document.getElementById('f-lat').value = rest.lat || '';
                 document.getElementById('f-lng').value = rest.lng || '';
-                
+
                 document.getElementById('f-hasMenu').checked = rest.hasMenu || false;
                 document.getElementById('f-menuType').value = rest.menuType || 'pdf';
-                
+
                 if (Array.isArray(rest.menuSrc)) {
                     document.getElementById('f-menuSrc').value = rest.menuSrc.join(', ');
                 } else {
@@ -212,38 +287,47 @@
             }
 
             const dataToSave = {
-                name, type, lat, lng, 
+                name, type, lat, lng,
                 hasMenu: hasMenu,
                 menuType: hasMenu ? menuType : "",
                 menuSrc: hasMenu ? menuSrc : ""
             };
 
             try {
-                event.target.disabled = true;
-                event.target.innerHTML = "Guardando...";
+                const saveButton = document.querySelector('#form-section .btn-green');
+                saveButton.disabled = true;
+                saveButton.textContent = "Guardando...";
 
                 if (editingId) {
-                    const docRef = doc(db, "restaurantes", editingId);
-                    await updateDoc(docRef, dataToSave);
+                    await adminFetch(`/api/admin/restaurants/${encodeURIComponent(editingId)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToSave)
+                    });
                 } else {
-                    await addDoc(collection(db, "restaurantes"), dataToSave);
+                    await adminFetch('/api/admin/restaurants', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToSave)
+                    });
                 }
-                
+
                 await cargarDatos();
                 cerrarFormulario();
             } catch (error) {
                 alert("❌ Error al guardar: " + error.message);
             } finally {
-                event.target.disabled = false;
-                event.target.innerHTML = "Guardar";
+                const saveButton = document.querySelector('#form-section .btn-green');
+                saveButton.disabled = false;
+                saveButton.textContent = "Guardar";
             }
         }
 
         window.borrarRestaurante = async function(id, name) {
             if (confirm(`⚠️ ¿Estás completamente seguro de que quieres eliminar '${name}'?\n\nEsta acción no se puede deshacer.`)) {
                 try {
-                    await deleteDoc(doc(db, "restaurantes", id));
-                    await cargarDatos(); 
+                    await adminFetch(`/api/admin/restaurants/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                    await cargarDatos();
                 } catch (error) {
                     alert("❌ Error al borrar: " + error.message);
                 }

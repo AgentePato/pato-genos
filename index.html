@@ -45,23 +45,8 @@
         </div>
     </div>
 
-    <!-- Script de tipo módulo para que Firebase funcione correctamente -->
+    <script src="api-config.js"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyA9B5kr9lx2tPZDuF37xY5gpCSSfTLp6XI",
-            authDomain: "directorioalergenos.firebaseapp.com",
-            projectId: "directorioalergenos",
-            storageBucket: "directorioalergenos.firebasestorage.app",
-            messagingSenderId: "25958692428",
-            appId: "1:25958692428:web:a31a6e4444566d0e5aa6e9"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
         let restaurants = [];
         let currentMarkers = [];
         let currentSearchText = '';
@@ -74,22 +59,28 @@
 
         async function cargarRestaurantes() {
             try {
-                const querySnapshot = await getDocs(collection(db, "restaurantes"));
-                
-                restaurants = [];
-                querySnapshot.forEach((doc) => {
-                    restaurants.push(doc.data());
-                });
-
+                const response = await fetch(`${window.API_BASE_URL}/api/restaurants`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                restaurants = await response.json();
                 updateView();
             } catch (error) {
                 console.error("Error obteniendo datos: ", error);
                 document.getElementById('restaurant-details').innerHTML = `
                     <div class="placeholder-message" style="color: #ef4444; border-color: #fca5a5;">
-                        ❌ Ups, no se pudo conectar con la base de datos.
+                        ❌ No se pudo conectar con la base de datos. Comprueba que la API está disponible.
                     </div>
                 `;
             }
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
         }
 
         function updateView() {
@@ -109,7 +100,7 @@
             filteredRestaurants.forEach(restaurant => {
                 if(restaurant.lat && restaurant.lng) {
                     const marker = L.marker([restaurant.lat, restaurant.lng]).addTo(map);
-                    marker.bindPopup(`<b>${restaurant.name}</b><br>Toca para ver la carta`);
+                    marker.bindPopup(`<b>${escapeHtml(restaurant.name)}</b><br>Toca para ver la carta`);
                     
                     marker.on('click', () => {
                         window.toggleRestaurantMenu(restaurant.name);
@@ -134,7 +125,7 @@
             if (filteredRestaurants.length === 0 && currentSearchText !== '') {
                 detailsDiv.innerHTML = `
                     <div class="placeholder-message">
-                        No se han encontrado resultados para "${currentSearchText}".
+                        No se han encontrado resultados para "${escapeHtml(currentSearchText)}".
                     </div>
                 `;
                 return;
@@ -150,10 +141,10 @@
                 const cardId = 'card-' + (restaurant.name ? restaurant.name.replace(/[^a-zA-Z0-9]/g, '-') : 'unknown');
                 
                 html += `
-                    <div class="restaurant-card" id="${cardId}">
-                        <div class="restaurant-header" onclick="toggleRestaurantMenu('${restaurant.name}')">
-                            <div class="restaurant-name">${restaurant.name || 'Sin nombre'}</div>
-                            <div class="restaurant-type">${restaurant.type || ''}</div>
+                    <div class="restaurant-card" id="${escapeHtml(cardId)}">
+                        <div class="restaurant-header" data-restaurant-name="${escapeHtml(restaurant.name || '')}">
+                            <div class="restaurant-name">${escapeHtml(restaurant.name || 'Sin nombre')}</div>
+                            <div class="restaurant-type">${escapeHtml(restaurant.type || '')}</div>
                         </div>
                 `;
                 
@@ -162,14 +153,14 @@
                     if (restaurant.hasMenu) {
                         if (restaurant.menuType === 'pdf') {
                             html += `
-                                <iframe src="${restaurant.menuSrc}" width="100%" height="600px" style="border:1px solid #cbd5e1; border-radius: 8px;"></iframe>
+                                <iframe src="${escapeHtml(restaurant.menuSrc)}" width="100%" height="600px" style="border:1px solid #cbd5e1; border-radius: 8px;"></iframe>
                                 <br>
-                                <a href="${restaurant.menuSrc}" target="_blank" class="view-btn">Abrir PDF en pantalla completa</a>
+                                <a href="${escapeHtml(restaurant.menuSrc)}" target="_blank" rel="noopener noreferrer" class="view-btn">Abrir PDF en pantalla completa</a>
                             `;
                         } else if (restaurant.menuType === 'images' && Array.isArray(restaurant.menuSrc)) {
                             let imagesHTML = '';
                             restaurant.menuSrc.forEach(imagePath => {
-                                imagesHTML += `<img src="${imagePath}" alt="Parte de la carta" class="menu-image" style="margin-bottom: 15px;">`;
+                                imagesHTML += `<img src="${escapeHtml(imagePath)}" alt="Parte de la carta" class="menu-image" style="margin-bottom: 15px;">`;
                             });
                             html += `
                                 ${imagesHTML}
@@ -213,6 +204,11 @@
             currentSearchText = event.target.value;
             selectedRestaurantName = null; 
             updateView();
+        });
+
+        document.getElementById('restaurant-details').addEventListener('click', event => {
+            const header = event.target.closest('.restaurant-header');
+            if (header) window.toggleRestaurantMenu(header.dataset.restaurantName);
         });
 
         cargarRestaurantes();
