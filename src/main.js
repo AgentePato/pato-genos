@@ -12,6 +12,7 @@ const state = {
   withMenu: false,
   nearMe: false,
   avoid: new Set(),
+  strict: false, // evitar también las trazas ("puede contener")
   selectedId: null,
   userPos: null,
   shown: PAGE_SIZE,
@@ -52,7 +53,8 @@ function distanceKm(a, b) {
   return 12742 * Math.asin(Math.sqrt(x));
 }
 
-const safeDishes = (r) => r.dishes.filter((d) => dishIsSafe(d, state.avoid));
+const isSafe = (d) => dishIsSafe(d, state.avoid, state.strict);
+const safeDishes = (r) => r.dishes.filter(isSafe);
 
 function filtered() {
   const q = normalize(state.search.trim());
@@ -78,6 +80,7 @@ function renderFilters() {
   replaceContent($('quickFilters'),
     chip('📍 Cerca de mí', state.nearMe, toggleNearMe),
     chip('📋 Con carta de alérgenos', state.withMenu, () => { state.withMenu = !state.withMenu; update(); }),
+    chip('⚠️ Evitar también trazas', state.strict, () => { state.strict = !state.strict; update(); }),
   );
 
   replaceContent($('allergenFilters'),
@@ -108,15 +111,26 @@ function renderMenu(r) {
       const name = d.section || 'Carta';
       sections.set(name, [...(sections.get(name) ?? []), d]);
     }
+    const icon = (a, trace) => h('span', {
+      class: `allergen${trace ? ' allergen--trace' : ''}${state.avoid.has(a) ? ' allergen--hit' : ''}`,
+      title: `${trace ? 'Puede contener trazas de' : 'Contiene'} ${(allergenByKey[a]?.label ?? a).toLowerCase()}`,
+    }, allergenByKey[a]?.icon ?? a);
+    // Cartas cortas, abiertas; las largas, plegadas por secciones.
+    const openAll = r.dishes.length <= 20;
+
     parts.push(h('div', { class: 'dishes' },
-      state.avoid.size ? h('p', { class: 'dishes__hint' }, `✅ ${safeDishes(r).length} de ${r.dishes.length} platos sin lo que evitas`) : null,
-      [...sections].map(([section, dishes]) => h('section', {},
-        h('h4', {}, section),
-        h('ul', {}, dishes.map((d) => h('li', { class: `dish${dishIsSafe(d, state.avoid) ? '' : ' dish--unsafe'}` },
+      h('p', { class: 'dishes__legend' }, 'Icono = contiene · icono tenue con borde = puede contener trazas'),
+      state.avoid.size
+        ? h('p', { class: 'dishes__hint' }, `✅ ${safeDishes(r).length} de ${r.dishes.length} platos sin lo que evitas${state.strict ? ' (ni trazas)' : ''}`)
+        : null,
+      [...sections].map(([section, dishes]) => h('details', { class: 'dish-section', open: openAll },
+        h('summary', {}, section, h('span', { class: 'dish-section__count' },
+          state.avoid.size ? `${dishes.filter(isSafe).length}/${dishes.length} aptos` : `${dishes.length}`)),
+        h('ul', {}, dishes.map((d) => h('li', { class: `dish${isSafe(d) ? '' : ' dish--unsafe'}` },
           h('span', { class: 'dish__name' }, d.name),
           h('span', { class: 'dish__allergens' },
-            d.allergens.length
-              ? d.allergens.map((a) => h('span', { class: `allergen${state.avoid.has(a) ? ' allergen--hit' : ''}`, title: allergenByKey[a]?.label ?? a }, allergenByKey[a]?.icon ?? a))
+            d.allergens.length || d.traces?.length
+              ? [d.allergens.map((a) => icon(a, false)), (d.traces ?? []).map((a) => icon(a, true))]
               : h('span', { class: 'muted' }, 'Sin alérgenos declarados')),
         ))),
       )),
@@ -124,7 +138,10 @@ function renderMenu(r) {
   }
 
   const sources = r.menu_src.map(safeUrl).filter(Boolean);
-  if (r.menu_type === 'pdf' && sources[0]) {
+  if (r.menu_type === 'pdf' && sources[0] && r.dishes.length) {
+    // Si ya está la carta digital, el PDF queda como fuente para consultarlo.
+    parts.push(h('a', { href: sources[0], target: '_blank', rel: 'noopener noreferrer', class: 'view-btn' }, '📄 Ver la tabla original (PDF)'));
+  } else if (r.menu_type === 'pdf' && sources[0]) {
     parts.push(
       h('iframe', { src: sources[0], class: 'menu-pdf', title: `Carta de ${r.name}` }),
       h('a', { href: sources[0], target: '_blank', rel: 'noopener noreferrer', class: 'view-btn' }, 'Abrir PDF en pantalla completa'),

@@ -28,7 +28,7 @@ export function createSupabaseBackend(url, anonKey) {
     async listRestaurants() {
       const rows = await run(
         client.from('restaurants')
-          .select('*, dishes(section, name, allergens, position)')
+          .select('*, dishes(*)')
           .order('name')
           .range(0, 4999),
       );

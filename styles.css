@@ -272,18 +272,33 @@ header p { margin: 5px 0 0 0; font-size: 1.1em; opacity: 0.9; }
 /* ---------- carta digital (platos con alérgenos) */
 .dishes { text-align: left; }
 .dishes__hint { margin: 0 0 12px; font-weight: bold; color: #047857; }
-.dishes h4 { margin: 16px 0 6px; color: var(--duck-blue); text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.05em; }
-.dishes ul { list-style: none; margin: 0; padding: 0; }
+.dishes__legend { margin: 0 0 10px; font-size: 0.8em; color: var(--muted); }
+.dish-section { border-bottom: 1px solid var(--line); }
+.dish-section summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    cursor: pointer;
+    color: var(--duck-blue);
+    text-transform: uppercase;
+    font-size: 0.85em;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+}
+.dish-section__count { text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: normal; }
+.dishes ul { list-style: none; margin: 0 0 8px; padding: 0; }
 .dish {
     display: flex;
     justify-content: space-between;
     gap: 12px;
     padding: 8px 0;
-    border-bottom: 1px solid var(--line);
+    border-top: 1px solid var(--line);
 }
 .dish--unsafe .dish__name { color: #94a3b8; text-decoration: line-through; }
 .dish__allergens { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; font-size: 0.85em; }
 .allergen { font-size: 1.1em; }
+.allergen--trace { opacity: 0.45; border: 1px dashed #94a3b8; border-radius: 6px; padding: 0 1px; font-size: 0.95em; }
 .allergen--hit { background: #fee2e2; border-radius: 6px; padding: 0 2px; }
 
 .more-btn {

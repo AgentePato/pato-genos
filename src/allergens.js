@@ -34,5 +34,7 @@ export function parseAllergenList(text) {
   return keys;
 }
 
-// Un plato es apto si no contiene ninguno de los alérgenos que quieres evitar.
-export const dishIsSafe = (dish, avoid) => !dish.allergens.some((a) => avoid.has(a));
+// Un plato es apto si no contiene ninguno de los alérgenos que quieres evitar
+// (y, en modo estricto, si tampoco puede llevar trazas de ellos).
+export const dishIsSafe = (dish, avoid, strict = false) =>
+  !dish.allergens.some((a) => avoid.has(a)) && !(strict && (dish.traces ?? []).some((a) => avoid.has(a)));

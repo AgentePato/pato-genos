@@ -68,15 +68,24 @@ Después vuelve a ejecutar `supabase/seed.sql` en Supabase (no duplica los que y
 Cada restaurante puede tener dos tipos de carta, y se pueden combinar:
 
 - **Carta escaneada**: un PDF o varias imágenes. Sube los archivos a una carpeta `cartas/` del repositorio y pon la ruta en el panel (`cartas/vips.pdf`), o un enlace `https://`.
-- **Carta digital**: en el panel, una línea por plato con el formato `Sección | Plato | alérgenos`:
+- **Carta digital**: en el panel, una línea por plato con el formato `Sección | Plato | contiene | puede contener`. La última parte (trazas) es opcional:
   ```text
-  Entrantes | Croquetas de jamón | gluten, lácteos, huevo
+  Entrantes | Croquetas de jamón | gluten, lácteos, huevo | soja, mostaza
   Principales | Entrecot a la brasa |
   Postres | Tarta de queso | lácteos, huevo, gluten
   ```
-  Solo las cartas digitales se pueden filtrar: al marcar *Sin gluten*, el mapa muestra los restaurantes con algún plato sin gluten y, dentro de la carta, tacha los que lo llevan.
+  Solo las cartas digitales se pueden filtrar: al marcar *Sin gluten*, el mapa muestra los restaurantes con algún plato sin gluten y, dentro de la carta, tacha los que lo llevan. Con *Evitar también trazas* se descartan además los que *pueden contener* gluten.
 
-Los platos se guardan en la tabla `dishes` de Supabase (`allergens` es una lista con las claves de `src/allergens.js`), así que también se pueden cargar en bloque con SQL o con un script.
+Las cartas largas se pueden generar desde el PDF del restaurante con un script y cargar con un SQL (carpeta `supabase/cartas/`). Por ejemplo, la de 100 Montaditos:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install pdfplumber
+.venv/bin/python scripts/cartas/100montaditos.py "100M Alérgenos. JULIO 2026.pdf"
+```
+
+Después ejecuta `supabase/cartas/100-montaditos-tres-cantos.sql` en el SQL Editor de Supabase.
+
+Los platos se guardan en la tabla `dishes` de Supabase (`allergens` y `traces` son listas con las claves de `src/allergens.js`), así que también se pueden cargar en bloque con SQL o con un script.
 
 ## Publicar
 

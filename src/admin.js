@@ -71,16 +71,18 @@ async function remove(r) {
 }
 
 // ------------------------------------------------------------------ formulario
+const labels = (keys = []) => keys.map((a) => allergenByKey[a]?.label ?? a).join(', ');
 const dishesToText = (dishes) => dishes
-  .map((d) => [d.section, d.name, d.allergens.map((a) => allergenByKey[a]?.label ?? a).join(', ')].join(' | '))
+  .map((d) => [d.section, d.name, labels(d.allergens), ...(d.traces?.length ? [labels(d.traces)] : [])].join(' | '))
   .join('\n');
 
 function textToDishes(text) {
   return text.split('\n').map((line) => line.trim()).filter(Boolean).map((line, i) => {
-    const [section = '', name = '', allergens = ''] = line.split('|').map((s) => s.trim());
+    const [section = '', name = '', allergens = '', traces = ''] = line.split('|').map((s) => s.trim());
     if (!name) throw new Error(`Línea ${i + 1}: falta el nombre del plato.`);
     try {
-      return { section, name, allergens: parseAllergenList(allergens) };
+      const contains = parseAllergenList(allergens);
+      return { section, name, allergens: contains, traces: parseAllergenList(traces).filter((a) => !contains.includes(a)) };
     } catch (error) {
       throw new Error(`Línea ${i + 1}: ${error.message}`);
     }

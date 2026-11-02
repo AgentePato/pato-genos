@@ -37,8 +37,12 @@ create table if not exists public.dishes (
   name          text not null check (char_length(name) between 1 and 160),
   allergens     text[] not null default '{}' check (allergens <@ array[
     'gluten', 'crustaceos', 'huevo', 'pescado', 'cacahuete', 'soja', 'lacteos',
-    'frutos_secos', 'apio', 'mostaza', 'sesamo', 'sulfitos', 'altramuces', 'moluscos']::text[])
+    'frutos_secos', 'apio', 'mostaza', 'sesamo', 'sulfitos', 'altramuces', 'moluscos']::text[]),
+  -- "Puede contener" (trazas), con las mismas claves que allergens.
+  traces        text[] not null default '{}'
 );
+-- Para bases creadas antes de que existieran las trazas.
+alter table public.dishes add column if not exists traces text[] not null default '{}';
 create index if not exists dishes_restaurant_idx on public.dishes (restaurant_id, position);
 
 -- Hash de la contraseña del panel. Nadie puede leer esta tabla desde la web.
@@ -144,15 +148,16 @@ begin
 end $$;
 
 -- Sustituye todos los platos del restaurante.
--- p_dishes = [{"section": "Entrantes", "name": "Croquetas", "allergens": ["gluten", "lacteos"]}, …]
+-- p_dishes = [{"section": "Entrantes", "name": "Croquetas", "allergens": ["gluten", "lacteos"], "traces": ["soja"]}, …]
 create or replace function public.admin_set_dishes(p_password text, p_restaurant uuid, p_dishes jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   perform require_admin(p_password);
   delete from dishes where restaurant_id = p_restaurant;
-  insert into dishes (restaurant_id, position, section, name, allergens)
+  insert into dishes (restaurant_id, position, section, name, allergens, traces)
   select p_restaurant, d.ord, coalesce(d.value ->> 'section', ''), d.value ->> 'name',
-         coalesce(array(select jsonb_array_elements_text(d.value -> 'allergens')), '{}')
+         coalesce(array(select jsonb_array_elements_text(d.value -> 'allergens')), '{}'),
+         coalesce(array(select jsonb_array_elements_text(d.value -> 'traces')), '{}')
   from jsonb_array_elements(coalesce(p_dishes, '[]')) with ordinality as d(value, ord);
   update restaurants set menu_updated_at = now() where id = p_restaurant;
 end $$;
