@@ -33,9 +33,11 @@ let userMarker = null;
 
 function pinIcon(restaurant, selected) {
   const hasMenu = hasAnyMenu(restaurant);
+  // Con alérgenos marcados: verde = hay platos sin ellos; naranja = solo platos que pueden llevar trazas.
+  const level = restaurantLevel(restaurant);
   return L.divIcon({
     className: '',
-    html: `<span class="pin${hasMenu ? ' pin--menu' : ''}${selected ? ' pin--selected' : ''}">${hasMenu ? '🦆' : ''}</span>`,
+    html: `<span class="pin${hasMenu ? ' pin--menu' : ''}${level ? ` pin--${level}` : ''}${selected ? ' pin--selected' : ''}">${hasMenu ? '🦆' : ''}</span>`,
     iconSize: hasMenu ? [30, 30] : [16, 16],
     iconAnchor: hasMenu ? [15, 15] : [8, 8],
   });
@@ -55,6 +57,17 @@ function distanceKm(a, b) {
 
 const isSafe = (d) => dishIsSafe(d, state.avoid, state.strict);
 const safeDishes = (r) => r.dishes.filter(isSafe);
+// 'safe' = sin lo que evitas ni trazas · 'trace' = no lo lleva pero puede tener trazas · 'unsafe' = lo lleva.
+function dishLevel(d) {
+  if (!dishIsSafe(d, state.avoid)) return 'unsafe';
+  return dishIsSafe(d, state.avoid, true) ? 'safe' : 'trace';
+}
+function restaurantLevel(r) {
+  if (!state.avoid.size || !r.dishes.length) return null;
+  const levels = new Set(r.dishes.map(dishLevel));
+  if (levels.has('safe')) return 'safe';
+  return levels.has('trace') && !state.strict ? 'trace' : null;
+}
 
 function filtered() {
   const q = normalize(state.search.trim());
@@ -121,13 +134,14 @@ function renderMenu(r) {
     parts.push(h('div', { class: 'dishes' },
       h('p', { class: 'dishes__legend' }, 'Icono = contiene · icono tenue con borde = puede contener trazas'),
       state.avoid.size
-        ? h('p', { class: 'dishes__hint' }, `✅ ${safeDishes(r).length} de ${r.dishes.length} platos sin lo que evitas${state.strict ? ' (ni trazas)' : ''}`)
+        ? h('p', { class: 'dishes__hint' }, dishSummary(r))
         : null,
       [...sections].map(([section, dishes]) => h('details', { class: 'dish-section', open: openAll },
         h('summary', {}, section, h('span', { class: 'dish-section__count' },
           state.avoid.size ? `${dishes.filter(isSafe).length}/${dishes.length} aptos` : `${dishes.length}`)),
-        h('ul', {}, dishes.map((d) => h('li', { class: `dish${isSafe(d) ? '' : ' dish--unsafe'}` },
-          h('span', { class: 'dish__name' }, d.name),
+        h('ul', {}, dishes.map((d) => h('li', { class: `dish${isSafe(d) ? '' : ' dish--unsafe'}${state.avoid.size && dishLevel(d) === 'trace' ? ' dish--trace' : ''}` },
+          h('span', { class: 'dish__name' }, d.name,
+            state.avoid.size && dishLevel(d) === 'trace' ? h('span', { class: 'trace-tag' }, '⚠️ puede contener trazas') : null),
           h('span', { class: 'dish__allergens' },
             d.allergens.length || d.traces?.length
               ? [d.allergens.map((a) => icon(a, false)), (d.traces ?? []).map((a) => icon(a, true))]
@@ -156,6 +170,15 @@ function renderMenu(r) {
   return h('div', { class: 'menu-container' }, parts);
 }
 
+function dishSummary(r) {
+  const count = (level) => r.dishes.filter((d) => dishLevel(d) === level).length;
+  const traces = count('trace');
+  return [
+    `✅ ${count('safe')} sin lo que evitas`,
+    traces ? (state.strict ? `${traces} descartados por trazas` : `⚠️ ${traces} con posibles trazas`) : null,
+  ].filter(Boolean).join(' · ');
+}
+
 function renderCard(r) {
   const selected = r.id === state.selectedId;
   const meta = [r.category, r.cuisine].filter(Boolean).join(' · ');
@@ -165,7 +188,8 @@ function renderCard(r) {
   return h('article', { class: `restaurant-card${selected ? ' restaurant-card--open' : ''}`, id: `card-${r.id}` },
     h('button', { type: 'button', class: 'restaurant-header', 'aria-expanded': String(selected), onClick: () => select(selected ? null : r.id) },
       h('span', { class: 'restaurant-name' }, r.name,
-        hasAnyMenu(r) ? h('span', { class: 'badge' }, r.dishes.length ? 'Carta digital' : 'Carta') : null),
+        hasAnyMenu(r) ? h('span', { class: 'badge' }, r.dishes.length ? 'Carta digital' : 'Carta') : null,
+        restaurantLevel(r) === 'trace' ? h('span', { class: 'badge badge--trace' }, '⚠️ Solo con posibles trazas') : null),
       h('span', { class: 'restaurant-type' },
         [meta, r.address, km != null ? (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`) : null].filter(Boolean).join(' — ')),
     ),
@@ -205,6 +229,7 @@ function renderList(list) {
 function update({ fit = false } = {}) {
   const list = filtered();
   renderFilters();
+  $('mapLegend').hidden = !state.avoid.size;
   renderMarkers(list);
   renderList(list);
   // Al buscar, el mapa enseña todos los resultados (p. ej. todos los VIPS).

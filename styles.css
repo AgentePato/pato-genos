@@ -162,13 +162,18 @@ header p { margin: 5px 0 0 0; font-size: 1.1em; opacity: 0.9; }
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: var(--duck-blue);
+    background: #94a3b8;
     border: 2px solid white;
     box-shadow: 0 1px 4px rgba(0,0,0,0.35);
     font-size: 16px;
     line-height: 1;
 }
-.pin--menu { background: var(--duck-orange); }
+.pin--menu { background: white; border-color: var(--duck-blue); }
+.pin--safe { background: #22c55e; border-color: white; }
+.pin--trace { background: #f97316; border-color: white; }
+.pin--legend { display: inline-grid; width: 22px; height: 22px; font-size: 12px; vertical-align: middle; margin: 0 4px 0 10px; }
+.pin--legend:first-child { margin-left: 0; }
+.map-legend { margin: -6px 0 12px; font-size: 0.85em; color: var(--muted); }
 .pin--selected { outline: 3px solid #0f172a; transform: scale(1.25); }
 
 .results-head {
@@ -220,11 +225,12 @@ header p { margin: 5px 0 0 0; font-size: 1.1em; opacity: 0.9; }
 .restaurant-type { display: block; color: var(--muted); font-size: 0.9em; }
 .badge {
     font-size: 0.65em;
-    background: #fde7c2;
-    color: #8a5300;
+    background: #dbeafe;
+    color: #1e40af;
     padding: 2px 8px;
     border-radius: 999px;
 }
+.badge--trace { background: #ffedd5; color: #c2410c; }
 
 .menu-container {
     padding: 20px;
@@ -296,6 +302,9 @@ header p { margin: 5px 0 0 0; font-size: 1.1em; opacity: 0.9; }
     border-top: 1px solid var(--line);
 }
 .dish--unsafe .dish__name { color: #94a3b8; text-decoration: line-through; }
+.dish--trace { background: #ffedd5; margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+.dish--trace .dish__name { color: #9a3412; }
+.trace-tag { display: block; font-size: 0.78em; font-weight: bold; color: #c2410c; margin-top: 2px; }
 .dish__allergens { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; font-size: 0.85em; }
 .allergen { font-size: 1.1em; }
 .allergen--trace { opacity: 0.45; border: 1px dashed #94a3b8; border-radius: 6px; padding: 0 1px; font-size: 0.95em; }
