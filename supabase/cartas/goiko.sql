@@ -6,7 +6,9 @@ do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('goiko:cclagavia', 'Goiko C.C. La Gavia, Madrid', 'C/ Adolfo Bioy Casares, 2, Vallecas, 28051 Madrid. C.C. La Gavia', 40.36914597421304, -3.599274893307518, 'https://www.google.com/maps/search/?api=1&query=Goiko%20C.C.%20La%20Gavia%2C%20Madrid%2C%20C/%20Adolfo%20Bioy%20Casares%2C%202%2C%20Vallecas%2C%2028051%20Madrid.%20C.C.%20La%20Gavia', 'goiko'),
   ('goiko:puertadelsol', 'Goiko Puerta del Sol, 14', 'Puerta del Sol, 14. Centro. 28013, Madrid', 40.41732719630253, -3.702541233781145, 'https://www.google.com/maps/search/?api=1&query=Goiko%20Puerta%20del%20Sol%2C%2014%2C%20Puerta%20del%20Sol%2C%2014.%20Centro.%2028013%2C%20Madrid', 'goiko'),
@@ -305,4 +307,5 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;

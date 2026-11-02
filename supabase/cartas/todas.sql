@@ -323,13 +323,15 @@ end $$;
 
 -- VIPS: 103 locales de la Comunidad de Madrid (web oficial de la marca).
 -- Carta de alérgenos: alergenos.grupovips.com.
--- Generado con scripts/cartas/vips.py o grupo_vips.py. Ejecútalo en Supabase → SQL Editor
+-- Generado con scripts/cartas/grupo_vips.py. Ejecútalo en Supabase → SQL Editor
 -- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('vips:SF016305', 'VIPS Sol', 'Puerta del Sol, 3, 28013 Madrid', 40.416727, -3.703387, 'https://www.google.com/maps/search/?api=1&query=VIPS%20Sol%2C%20Puerta%20del%20Sol%2C%203%2C%2028013%20Madrid', 'vips'),
   ('vips:SF016157', 'VIPS Peligros', 'Calle de Alcalá, 23, 28014 Madrid', 40.4180985, -3.6992082, 'https://www.google.com/maps/search/?api=1&query=VIPS%20Peligros%2C%20Calle%20de%20Alcal%C3%A1%2C%2023%2C%2028014%20Madrid', 'vips'),
@@ -997,18 +999,21 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
 -- Ginos: 59 locales de la Comunidad de Madrid (web oficial de la marca).
 -- Carta de alérgenos: alergenos.grupovips.com.
--- Generado con scripts/cartas/ginos.py o grupo_vips.py. Ejecútalo en Supabase → SQL Editor
+-- Generado con scripts/cartas/grupo_vips.py. Ejecútalo en Supabase → SQL Editor
 -- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('ginos:SF011047', 'Ginos Alcalá 23', 'Calle Alcalá, 23, 28014 Madrid', 40.418162, -3.699128, 'https://www.google.com/maps/search/?api=1&query=Ginos%20Alcal%C3%A1%2023%2C%20Calle%20Alcal%C3%A1%2C%2023%2C%2028014%20Madrid', 'ginos'),
   ('ginos:SF011173', 'Ginos Gran Via 63', 'Gran Via 63, 28013 Madrid', 40.4225886, -3.7098364, 'https://www.google.com/maps/search/?api=1&query=Ginos%20Gran%20Via%2063%2C%20Gran%20Via%2063%2C%2028013%20Madrid', 'ginos'),
@@ -1482,18 +1487,21 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
 -- Foster's Hollywood: 52 locales de la Comunidad de Madrid (web oficial de la marca).
 -- Carta de alérgenos: alergenos.grupovips.com.
--- Generado con scripts/cartas/fosters.py o grupo_vips.py. Ejecútalo en Supabase → SQL Editor
+-- Generado con scripts/cartas/grupo_vips.py. Ejecútalo en Supabase → SQL Editor
 -- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('fosters:F001012', 'Foster''s Hollywood Opera', 'Plaza Isabel II, 3, 28013 Madrid', 40.417834, -3.709782, 'https://www.google.com/maps/search/?api=1&query=Foster%27s%20Hollywood%20Opera%2C%20Plaza%20Isabel%20II%2C%203%2C%2028013%20Madrid', 'foster'),
   ('fosters:F001522', 'Foster''s Hollywood Gran Vía 57', 'C/ Gran Vía,57, 28013 Madrid', 40.4218697, -3.708799, 'https://www.google.com/maps/search/?api=1&query=Foster%27s%20Hollywood%20Gran%20V%C3%ADa%2057%2C%20C/%20Gran%20V%C3%ADa%2C57%2C%2028013%20Madrid', 'foster'),
@@ -1932,18 +1940,21 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
--- Starbucks: 61 locales de la Comunidad de Madrid (web oficial de la marca)
--- y su carta de alérgenos (alergenos.grupovips.com).
+-- Starbucks: 61 locales de la Comunidad de Madrid (web oficial de la marca).
+-- Carta de alérgenos: alergenos.grupovips.com.
 -- Generado con scripts/cartas/grupo_vips.py. Ejecútalo en Supabase → SQL Editor
 -- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('starbucks:1009539', 'Starbucks CC.Parque Sur', 'Gran Bretana Avenue, 28916 Madrid', 40.33946, -3.73322, 'https://www.google.com/maps/search/?api=1&query=Starbucks%20CC.Parque%20Sur%2C%20Gran%20Bretana%20Avenue%2C%2028916%20Madrid', 'starbucks'),
   ('starbucks:1009540', 'Starbucks E C I Pozuelo', 'Camino dsel cerro d elos gamos 2  Pozuelo 28224 Madrid, 28224 Madrid', 40.4629, -3.80774, 'https://www.google.com/maps/search/?api=1&query=Starbucks%20E%20C%20I%20Pozuelo%2C%20Camino%20dsel%20cerro%20d%20elos%20gamos%202%20%20Pozuelo%2028224%20Madrid%2C%2028224%20Madrid', 'starbucks'),
@@ -2366,6 +2377,7 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
@@ -2377,7 +2389,9 @@ do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('goiko:cclagavia', 'Goiko C.C. La Gavia, Madrid', 'C/ Adolfo Bioy Casares, 2, Vallecas, 28051 Madrid. C.C. La Gavia', 40.36914597421304, -3.599274893307518, 'https://www.google.com/maps/search/?api=1&query=Goiko%20C.C.%20La%20Gavia%2C%20Madrid%2C%20C/%20Adolfo%20Bioy%20Casares%2C%202%2C%20Vallecas%2C%2028051%20Madrid.%20C.C.%20La%20Gavia', 'goiko'),
   ('goiko:puertadelsol', 'Goiko Puerta del Sol, 14', 'Puerta del Sol, 14. Centro. 28013, Madrid', 40.41732719630253, -3.702541233781145, 'https://www.google.com/maps/search/?api=1&query=Goiko%20Puerta%20del%20Sol%2C%2014%2C%20Puerta%20del%20Sol%2C%2014.%20Centro.%2028013%2C%20Madrid', 'goiko'),
@@ -2676,6 +2690,7 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
@@ -2687,7 +2702,9 @@ do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('telepizza:osm-node-10067667383', 'Telepizza Avenida de Juan Pablo II 26', 'Avenida de Juan Pablo II 26, Paracuellos de Jarama', 40.502225, -3.5143069, 'https://www.google.com/maps/search/?api=1&query=Telepizza%20Avenida%20de%20Juan%20Pablo%20II%2026%2C%20Avenida%20de%20Juan%20Pablo%20II%2026%2C%20Paracuellos%20de%20Jarama', 'telepizza'),
   ('telepizza:osm-node-1008452020', 'Telepizza', '', 40.3661469, -3.60365, 'https://www.google.com/maps/search/?api=1&query=Telepizza%2C%20', 'telepizza'),
@@ -2964,6 +2981,7 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
@@ -2975,7 +2993,9 @@ do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('pizzahut:osm-node-12037738569', 'Pizza Hut Calle de Gerona 3', 'Calle de Gerona 3', 40.4150734, -3.7065683, 'https://www.google.com/maps/search/?api=1&query=Pizza%20Hut%20Calle%20de%20Gerona%203%2C%20Calle%20de%20Gerona%203', 'pizzahut'),
   ('pizzahut:osm-node-2972104971', 'Pizza Hut', '', 40.4547053, -3.7033388, 'https://www.google.com/maps/search/?api=1&query=Pizza%20Hut%2C%20', 'pizzahut'),
@@ -3285,6 +3305,7 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
@@ -3296,7 +3317,9 @@ do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('papajohns:osm-node-11161442316', 'Papa John''s', '', 40.4271578, -3.5543306, 'https://www.google.com/maps/search/?api=1&query=Papa%20John%27s%2C%20', 'papajohns'),
   ('papajohns:osm-node-11220870879', 'Papa John''s Avenida de la Reina Victoria 68', 'Avenida de la Reina Victoria 68, Madrid', 40.4461032, -3.7142936, 'https://www.google.com/maps/search/?api=1&query=Papa%20John%27s%20Avenida%20de%20la%20Reina%20Victoria%2068%2C%20Avenida%20de%20la%20Reina%20Victoria%2068%2C%20Madrid', 'papajohns'),
@@ -3502,6 +3525,7 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
 
 
@@ -3513,7 +3537,9 @@ do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('pans:osm-node-11083573898', 'Pans & Company', '', 40.3396321, -3.7336992, 'https://www.google.com/maps/search/?api=1&query=Pans%20%26%20Company%2C%20', 'pans'),
   ('pans:osm-node-184049438', 'Pans & Company', '', 40.4202714, -3.7029282, 'https://www.google.com/maps/search/?api=1&query=Pans%20%26%20Company%2C%20', 'pans'),
@@ -3766,4 +3792,5 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;

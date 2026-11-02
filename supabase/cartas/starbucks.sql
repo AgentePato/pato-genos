@@ -1,12 +1,14 @@
--- Starbucks: 61 locales de la Comunidad de Madrid (web oficial de la marca)
--- y su carta de alérgenos (alergenos.grupovips.com).
+-- Starbucks: 61 locales de la Comunidad de Madrid (web oficial de la marca).
+-- Carta de alérgenos: alergenos.grupovips.com.
 -- Generado con scripts/cartas/grupo_vips.py. Ejecútalo en Supabase → SQL Editor
 -- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('starbucks:1009539', 'Starbucks CC.Parque Sur', 'Gran Bretana Avenue, 28916 Madrid', 40.33946, -3.73322, 'https://www.google.com/maps/search/?api=1&query=Starbucks%20CC.Parque%20Sur%2C%20Gran%20Bretana%20Avenue%2C%2028916%20Madrid', 'starbucks'),
   ('starbucks:1009540', 'Starbucks E C I Pozuelo', 'Camino dsel cerro d elos gamos 2  Pozuelo 28224 Madrid, 28224 Madrid', 40.4629, -3.80774, 'https://www.google.com/maps/search/?api=1&query=Starbucks%20E%20C%20I%20Pozuelo%2C%20Camino%20dsel%20cerro%20d%20elos%20gamos%202%20%20Pozuelo%2028224%20Madrid%2C%2028224%20Madrid', 'starbucks'),
@@ -429,4 +431,5 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;

@@ -6,7 +6,9 @@ do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('papajohns:osm-node-11161442316', 'Papa John''s', '', 40.4271578, -3.5543306, 'https://www.google.com/maps/search/?api=1&query=Papa%20John%27s%2C%20', 'papajohns'),
   ('papajohns:osm-node-11220870879', 'Papa John''s Avenida de la Reina Victoria 68', 'Avenida de la Reina Victoria 68, Madrid', 40.4461032, -3.7142936, 'https://www.google.com/maps/search/?api=1&query=Papa%20John%27s%20Avenida%20de%20la%20Reina%20Victoria%2068%2C%20Avenida%20de%20la%20Reina%20Victoria%2068%2C%20Madrid', 'papajohns'),
@@ -212,4 +214,5 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;

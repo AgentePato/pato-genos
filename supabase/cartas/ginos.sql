@@ -1,12 +1,14 @@
 -- Ginos: 59 locales de la Comunidad de Madrid (web oficial de la marca).
 -- Carta de alérgenos: alergenos.grupovips.com.
--- Generado con scripts/cartas/ginos.py o grupo_vips.py. Ejecútalo en Supabase → SQL Editor
+-- Generado con scripts/cartas/grupo_vips.py. Ejecútalo en Supabase → SQL Editor
 -- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('ginos:SF011047', 'Ginos Alcalá 23', 'Calle Alcalá, 23, 28014 Madrid', 40.418162, -3.699128, 'https://www.google.com/maps/search/?api=1&query=Ginos%20Alcal%C3%A1%2023%2C%20Calle%20Alcal%C3%A1%2C%2023%2C%2028014%20Madrid', 'ginos'),
   ('ginos:SF011173', 'Ginos Gran Via 63', 'Gran Via 63, 28013 Madrid', 40.4225886, -3.7098364, 'https://www.google.com/maps/search/?api=1&query=Ginos%20Gran%20Via%2063%2C%20Gran%20Via%2063%2C%2028013%20Madrid', 'ginos'),
@@ -480,4 +482,5 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;

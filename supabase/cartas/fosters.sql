@@ -1,12 +1,14 @@
 -- Foster's Hollywood: 52 locales de la Comunidad de Madrid (web oficial de la marca).
 -- Carta de alérgenos: alergenos.grupovips.com.
--- Generado con scripts/cartas/fosters.py o grupo_vips.py. Ejecútalo en Supabase → SQL Editor
+-- Generado con scripts/cartas/grupo_vips.py. Ejecútalo en Supabase → SQL Editor
 -- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
   v_template uuid;
 begin
-  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text) on commit drop;
+  -- El SQL Editor ejecuta todo en una transacción: la tabla de la cadena anterior puede seguir ahí.
+  drop table if exists chain_stores;
+  create temp table chain_stores (place_id text, name text, address text, lat float8, lng float8, maps_url text, menu text);
   insert into chain_stores values
   ('fosters:F001012', 'Foster''s Hollywood Opera', 'Plaza Isabel II, 3, 28013 Madrid', 40.417834, -3.709782, 'https://www.google.com/maps/search/?api=1&query=Foster%27s%20Hollywood%20Opera%2C%20Plaza%20Isabel%20II%2C%203%2C%2028013%20Madrid', 'foster'),
   ('fosters:F001522', 'Foster''s Hollywood Gran Vía 57', 'C/ Gran Vía,57, 28013 Madrid', 40.4218697, -3.708799, 'https://www.google.com/maps/search/?api=1&query=Foster%27s%20Hollywood%20Gran%20V%C3%ADa%2057%2C%20C/%20Gran%20V%C3%ADa%2C57%2C%2028013%20Madrid', 'foster'),
@@ -445,4 +447,5 @@ begin
    where r.place_id = s.place_id and r.id <> t.id;
   delete from public.dishes d using public.restaurants r, chain_stores s
    where d.restaurant_id = r.id and r.place_id = s.place_id and r.menu_from is not null;
+  drop table chain_stores;
 end $$;
