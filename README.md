@@ -85,7 +85,7 @@ python3 -m venv .venv && .venv/bin/pip install pdfplumber
 .venv/bin/python scripts/cartas/100montaditos.py "100M Alérgenos. JULIO 2026.pdf"
 ```
 
-Después ejecuta `supabase/cartas/100-montaditos-tres-cantos.sql` en el SQL Editor de Supabase.
+El script también descarga la lista oficial de locales de la web de 100 Montaditos. Después ejecuta `supabase/cartas/100-montaditos.sql` en el SQL Editor de Supabase: da de alta los locales de la Comunidad de Madrid que falten y les asigna la carta. La carta se guarda una sola vez, en el local de Tres Cantos, y los demás la comparten (columna `menu_from`), así que al actualizarla cambia en todos.
 
 Los platos se guardan en la tabla `dishes` de Supabase (`allergens` y `traces` son listas con las claves de `src/allergens.js`), así que también se pueden cargar en bloque con SQL o con un script.
 

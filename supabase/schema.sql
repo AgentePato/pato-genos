@@ -25,8 +25,12 @@ create table if not exists public.restaurants (
   menu_type       text not null default '' check (menu_type in ('', 'pdf', 'images')),
   menu_src        text[] not null default '{}',
   menu_updated_at timestamptz,
+  -- Locales de una cadena: usan la carta digital de este otro restaurante (se guarda una sola vez).
+  menu_from       uuid references public.restaurants on delete set null,
   created_at      timestamptz not null default now()
 );
+-- Para bases creadas antes de que existiera menu_from.
+alter table public.restaurants add column if not exists menu_from uuid references public.restaurants on delete set null;
 
 -- Los 14 alérgenos de declaración obligatoria (Reglamento UE 1169/2011).
 create table if not exists public.dishes (

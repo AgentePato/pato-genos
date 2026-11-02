@@ -99,6 +99,11 @@ function openForm(r = null) {
   $('f-menuType').value = r?.menu_type ?? '';
   $('f-menuSrc').value = r?.menu_src.join(', ') ?? '';
   $('f-dishes').value = dishesToText(r?.dishes ?? []);
+  const source = restaurants.find((x) => x.id === r?.menu_from);
+  $('f-shared').hidden = !source;
+  $('f-shared').textContent = source
+    ? `Comparte la carta de ${source.name} (${source.address || 'otro local'}). Edítala allí para cambiarla en todos; si la cambias aquí, solo cambia este local.`
+    : '';
   $('form-error').textContent = '';
   $('admin-title').textContent = r ? `Editando: ${r.name}` : 'Nuevo restaurante';
   show('form-section');

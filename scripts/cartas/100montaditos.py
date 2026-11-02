@@ -1,9 +1,13 @@
-"""Convierte la tabla oficial de alérgenos de 100 Montaditos (PDF) en la
-carta digital del restaurante y genera el SQL para cargarla en Supabase.
+"""Convierte la tabla oficial de alérgenos de 100 Montaditos (PDF) en una
+carta digital, descarga la lista oficial de locales de la cadena y genera un
+SQL que da de alta los de la Comunidad de Madrid y les asigna la carta.
 
 Uso:
   python3 -m venv .venv && .venv/bin/pip install pdfplumber
   .venv/bin/python scripts/cartas/100montaditos.py "100M Alérgenos. JULIO 2026.pdf"
+
+La carta se guarda una sola vez (en el local de Tres Cantos) y el resto de
+locales la comparten con restaurants.menu_from.
 
 Lee las páginas "por producto terminado" (4-8): cada X es "contiene" y cada
 * es "puede contener" (trazas). Las filas con texto girado en el PDF
@@ -12,15 +16,20 @@ así que con una tabla de otro mes revisa la salida antes de cargarla.
 """
 
 import json
+import math
 import re
 import sys
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 import pdfplumber
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = ROOT / "supabase" / "cartas" / "100-montaditos-tres-cantos.sql"
-PLACE_ID = "osm:node/5134877837"  # 100 Montaditos de Tres Cantos
+OUTPUT = ROOT / "supabase" / "cartas" / "100-montaditos.sql"
+TEMPLATE_PLACE_ID = "osm:node/5134877837"  # 100 Montaditos de Tres Cantos: guarda la carta para todos
+STORES_URL = "https://spain.100montaditos.com/assets/web/js/script.js"  # su buscador de locales lleva la lista dentro
+REGIONS = {"COMUNIDAD DE MADRID", "MADRID"}  # la lista oficial usa las dos formas
 PDF_URL = "https://spain.100montaditos.com/assets/web/docs/100M%20Al%C3%A9rgenos.%20JULIO%202026.pdf"
 
 KEYS = ["gluten", "crustaceos", "huevo", "pescado", "cacahuete", "soja", "lacteos",
@@ -106,33 +115,107 @@ def build_dishes(rows):
     return dishes
 
 
-def write_sql(dishes):
+def fetch_stores():
+    """Lista oficial de locales: va como JSON dentro del JavaScript de su web."""
+    request = urllib.request.Request(STORES_URL, headers={"User-Agent": "Mozilla/5.0"})
+    script = urllib.request.urlopen(request, timeout=60).read().decode("utf-8")
+    lists = [json.loads(m.group(1).encode().decode("unicode_escape").encode("latin-1").decode("utf-8"))
+             for m in re.finditer(r"JSON\.parse\('(\[.*?\])'\)", script, re.S) if '"codigo_restalia"' in m.group(1)]
+    if not lists:
+        raise SystemExit("No encuentro la lista de locales en la web de 100 Montaditos.")
+    stores = []
+    for store in max(lists, key=len):
+        if store["comunidad"] not in REGIONS:
+            continue
+        lat, lng = float(store["latitud"]), float(store["longitud"])
+        # La lista oficial repite algún local con dos fichas casi en el mismo punto.
+        if any(math.dist((lat, lng * 0.76), (s["lat"], s["lng"] * 0.76)) * 111_000 < 80 for s in stores):
+            continue
+        code = store["codigo_restalia"].strip()
+        stores.append(dict(lat=lat, lng=lng, code=code if re.fullmatch(r"[A-Z]*\d+", code) else "",
+                           address=pretty_address(store["direccion"], store["ciudad"])))
+    return stores
+
+
+SMALL_WORDS = {"de", "del", "la", "las", "los", "el", "y", "en"}
+
+
+def pretty_address(street, town):
+    """'CALLE DE LA PRINCESA 7' + 'MADRID' → 'Calle de la Princesa 7, Madrid'."""
+    def title(text):
+        text = re.sub(r"\s+", " ", text.strip()).lower()
+        def word(m):
+            w = m.group(0)
+            if w in ROMAN:
+                return w.upper()
+            if w in SMALL_WORDS and m.start() > 0:
+                return w
+            return w[:1].upper() + w[1:]
+        return re.sub(r"[^\W\d_]+", word, text)
+    street, town = title(street), title(town)
+    street = re.sub(r"\b(Cc|C\.c\.|S/N|Km)(?=\W|$)", lambda m: {"Cc": "CC", "C.c.": "CC", "S/N": "s/n", "Km": "km"}[m.group(1)], street)
+    return street if town.lower() in street.lower() else f"{street}, {town}"
+
+
+ROMAN = {"ii", "iii", "iv", "vi"}
+
+
+def sql_text(value):
+    return "'" + value.replace("'", "''") + "'"
+
+
+def write_sql(dishes, stores):
     lines = ",\n  ".join(json.dumps(d, ensure_ascii=False) for d in dishes)  # un plato por línea
     payload = f"[\n  {lines}\n]".replace("'", "''")
+    def place_id(store):
+        # Algunos locales nuevos no tienen código interno; entonces se identifican por coordenadas.
+        return f"restalia:{store['code']}" if store["code"] else f"restalia:{store['lat']:.5f},{store['lng']:.5f}"
+
+    rows = ",\n  ".join(
+        "({}, {}, {}, {}, {})".format(
+            sql_text(place_id(s)), sql_text(s["address"]), s["lat"], s["lng"],
+            sql_text("https://www.google.com/maps/search/?api=1&query="
+                     + urllib.parse.quote(f"100 Montaditos, {s['address']}")))
+        for s in stores)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(f"""-- Carta de alérgenos de 100 Montaditos (Tres Cantos), tabla oficial de julio de 2026.
+    OUTPUT.write_text(f"""-- 100 Montaditos: {len(stores)} locales de la Comunidad de Madrid (lista oficial de su web)
+-- y su carta de alérgenos (tabla oficial de julio de 2026, {len(dishes)} platos).
 -- Generado con scripts/cartas/100montaditos.py. Ejecútalo en Supabase → SQL Editor
--- (antes, vuelve a ejecutar schema.sql para tener la columna de trazas).
+-- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
-  v_id uuid;
+  v_template uuid;
+  v_pdf text := '{PDF_URL}';
   v_dishes jsonb := '{payload}';
 begin
-  select id into v_id from public.restaurants where place_id = '{PLACE_ID}';
-  if v_id is null then raise exception 'No encuentro el 100 Montaditos de Tres Cantos'; end if;
+  -- 1. Locales que faltan (si ya hay un 100 Montaditos a menos de ~150 m, es el mismo).
+  insert into public.restaurants (place_id, name, address, lat, lng, category, cuisine, maps_url, source)
+  select s.place_id, '100 Montaditos', s.address, s.lat, s.lng, 'Restaurante', 'montaditos, tapas', s.maps_url, 'manual'
+  from (values
+  {rows}
+  ) as s(place_id, address, lat, lng, maps_url)
+  where not exists (
+    select 1 from public.restaurants r
+    where r.name ilike '%montadito%' and abs(r.lat - s.lat) < 0.0014 and abs(r.lng - s.lng) < 0.0018)
+  on conflict (place_id) do nothing;
 
-  update public.restaurants
-     set menu_type = 'pdf',
-         menu_src = array['{PDF_URL}'],
-         menu_updated_at = now()
-   where id = v_id;
-
-  delete from public.dishes where restaurant_id = v_id;
+  -- 2. La carta se guarda una vez, en el local de Tres Cantos.
+  select id into v_template from public.restaurants where place_id = '{TEMPLATE_PLACE_ID}';
+  if v_template is null then raise exception 'No encuentro el 100 Montaditos de Tres Cantos'; end if;
+  delete from public.dishes where restaurant_id = v_template;
   insert into public.dishes (restaurant_id, position, section, name, allergens, traces)
-  select v_id, d.ord, d.value ->> 'section', d.value ->> 'name',
+  select v_template, d.ord, d.value ->> 'section', d.value ->> 'name',
          array(select jsonb_array_elements_text(d.value -> 'allergens')),
          array(select jsonb_array_elements_text(d.value -> 'traces'))
   from jsonb_array_elements(v_dishes) with ordinality as d(value, ord);
+
+  -- 3. Todos los 100 Montaditos usan esa carta y enlazan el PDF oficial.
+  update public.restaurants
+     set menu_type = 'pdf', menu_src = array[v_pdf], menu_updated_at = now(),
+         menu_from = case when id = v_template then null else v_template end
+   where name ilike '100 montaditos%';
+  delete from public.dishes d using public.restaurants r
+   where d.restaurant_id = r.id and r.menu_from = v_template;
 end $$;
 """, encoding="utf-8")
 
@@ -141,8 +224,9 @@ def main():
     if len(sys.argv) != 2:
         raise SystemExit(__doc__)
     dishes = build_dishes(read_rows(sys.argv[1]))
-    write_sql(dishes)
-    print(f"{len(dishes)} platos guardados en {OUTPUT.relative_to(ROOT)}")
+    stores = fetch_stores()
+    write_sql(dishes, stores)
+    print(f"{len(dishes)} platos y {len(stores)} locales guardados en {OUTPUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

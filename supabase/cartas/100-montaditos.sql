@@ -1,9 +1,11 @@
--- Carta de alérgenos de 100 Montaditos (Tres Cantos), tabla oficial de julio de 2026.
+-- 100 Montaditos: 90 locales de la Comunidad de Madrid (lista oficial de su web)
+-- y su carta de alérgenos (tabla oficial de julio de 2026, 188 platos).
 -- Generado con scripts/cartas/100montaditos.py. Ejecútalo en Supabase → SQL Editor
--- (antes, vuelve a ejecutar schema.sql para tener la columna de trazas).
+-- después de schema.sql. Se puede volver a ejecutar: no duplica locales.
 do $$
 declare
-  v_id uuid;
+  v_template uuid;
+  v_pdf text := 'https://spain.100montaditos.com/assets/web/docs/100M%20Al%C3%A9rgenos.%20JULIO%202026.pdf';
   v_dishes jsonb := '[
   {"section": "De la casa", "name": "1. Jamón Gran Reserva y aceite de oliva", "allergens": ["gluten"], "traces": ["soja", "mostaza"]},
   {"section": "De la casa", "name": "2. Tortilla de patatas y tomate", "allergens": ["gluten", "huevo"], "traces": ["soja", "mostaza"]},
@@ -195,19 +197,121 @@ declare
   {"section": "Helados", "name": "Topping cookies & cream", "allergens": ["gluten", "soja"], "traces": ["lacteos"]}
 ]';
 begin
-  select id into v_id from public.restaurants where place_id = 'osm:node/5134877837';
-  if v_id is null then raise exception 'No encuentro el 100 Montaditos de Tres Cantos'; end if;
+  -- 1. Locales que faltan (si ya hay un 100 Montaditos a menos de ~150 m, es el mismo).
+  insert into public.restaurants (place_id, name, address, lat, lng, category, cuisine, maps_url, source)
+  select s.place_id, '100 Montaditos', s.address, s.lat, s.lng, 'Restaurante', 'montaditos, tapas', s.maps_url, 'manual'
+  from (values
+  ('restalia:0505', 'Av. de la Libertad 72, Alcorcon', 40.353204, -3.803839, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Av.%20de%20la%20Libertad%2072%2C%20Alcorcon'),
+  ('restalia:0054', 'Avenida de la Albufera 67, Madrid', 40.395596, -3.663774, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20la%20Albufera%2067%2C%20Madrid'),
+  ('restalia:40.45758,-3.71205', 'Calle Francos Rodriguez 69, Madrid', 40.45758232253421, -3.712050628836171, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Francos%20Rodriguez%2069%2C%20Madrid'),
+  ('restalia:0442', 'Avenida de la Peseta 36, Madrid', 40.362283, -3.757201, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20la%20Peseta%2036%2C%20Madrid'),
+  ('restalia:0403', 'Avenida de España, Valdemoro', 40.192474, -3.690518, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20Espa%C3%B1a%2C%20Valdemoro'),
+  ('restalia:0092', 'Avenida de la Constitucion 23, Mostoles', 40.324725, -3.863292, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20la%20Constitucion%2023%2C%20Mostoles'),
+  ('restalia:0207', 'Avenida de la Universidad 31, Leganes', 40.33162, -3.768054, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20la%20Universidad%2031%2C%20Leganes'),
+  ('restalia:BL0019', 'C/ de la Union Europea 73, Arroyomolinos', 40.28717, -3.91828, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C/%20de%20la%20Union%20Europea%2073%2C%20Arroyomolinos'),
+  ('restalia:BL0037', 'Calle Tejera 2 Local 505, Colmenar Viejo', 40.660207, -3.75356, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Tejera%202%20Local%20505%2C%20Colmenar%20Viejo'),
+  ('restalia:BL0039', 'Local Nº 17 / Av de Fuentemar, Calle Rioja, Av Jose Garate y Con Av de la Constitucion, Coslada', 40.42787, -3.55227, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Local%20N%C2%BA%2017%20/%20Av%20de%20Fuentemar%2C%20Calle%20Rioja%2C%20Av%20Jose%20Garate%20y%20Con%20Av%20de%20la%20Constitucion%2C%20Coslada'),
+  ('restalia:BL0032', 'Camino de San Anton s/n, Pinto', 40.240661, -3.690549, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Camino%20de%20San%20Anton%20s/n%2C%20Pinto'),
+  ('restalia:BL0046', 'Plaza de San Juan 2, Parla', 40.238418, -3.769999, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20de%20San%20Juan%202%2C%20Parla'),
+  ('restalia:40.28803,-4.01465', 'Plaza Segovia 3, Navalcarnero', 40.288026728591205, -4.014646730689369, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20Segovia%203%2C%20Navalcarnero'),
+  ('restalia:0463', 'Calle de las Escuelas 46, El Alamo', 40.229521, -3.994042, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20las%20Escuelas%2046%2C%20El%20Alamo'),
+  ('restalia:0482', 'C/ Estrella de Hadar 1, Madrid', 40.393896, -3.679858, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C/%20Estrella%20de%20Hadar%201%2C%20Madrid'),
+  ('restalia:0521', 'C/ Hospital 14, Torrejon de Ardoz', 40.458777, -3.477965, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C/%20Hospital%2014%2C%20Torrejon%20de%20Ardoz'),
+  ('restalia:0537', 'Calle Alcala 205, Madrid', 40.42942, -3.66702, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Alcala%20205%2C%20Madrid'),
+  ('restalia:0527', 'Antonio Lopez Nº52, Madrid', 40.39529, -3.71069, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Antonio%20Lopez%20N%C2%BA52%2C%20Madrid'),
+  ('restalia:0448', 'Calle Atienza 1, Alcala de Henares', 40.486021, -3.360881, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Atienza%201%2C%20Alcala%20de%20Henares'),
+  ('restalia:0202', 'Calle Bravo Murillo 377, Madrid', 40.465891, -3.690624, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Bravo%20Murillo%20377%2C%20Madrid'),
+  ('restalia:0241', 'Calle Bravo Murillo 98, Madrid', 40.447675, -3.703726, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Bravo%20Murillo%2098%2C%20Madrid'),
+  ('restalia:0330', 'Calle de Fernando el Catolico 84, Madrid', 40.434793, -3.717054, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20Fernando%20el%20Catolico%2084%2C%20Madrid'),
+  ('restalia:0170', 'Calle de la Princesa 7, Madrid', 40.425453, -3.712732, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20la%20Princesa%207%2C%20Madrid'),
+  ('restalia:40.43439,-3.60712', 'Av. de Niza, 42, Madrid', 40.434393602042, -3.60711884330242, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Av.%20de%20Niza%2C%2042%2C%20Madrid'),
+  ('restalia:40.38553,-3.73930', 'Av. de la Plaza de Toros 9, Carabanchel', 40.38553004829735, -3.739302282209043, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Av.%20de%20la%20Plaza%20de%20Toros%209%2C%20Carabanchel'),
+  ('restalia:0152', 'Calle de Narvaez 49, Madrid', 40.418885, -3.676022, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20Narvaez%2049%2C%20Madrid'),
+  ('restalia:0204', 'Calle de Toledo 59, Madrid', 40.411469, -3.708048, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20Toledo%2059%2C%20Madrid'),
+  ('restalia:0398', 'Calle del Corazon de Maria 65, Madrid', 40.447954, -3.66666, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20del%20Corazon%20de%20Maria%2065%2C%20Madrid'),
+  ('restalia:0234', 'Calle del Principe de Vergara 254, Madrid', 40.455714, -3.676887, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20del%20Principe%20de%20Vergara%20254%2C%20Madrid'),
+  ('restalia:0257', 'Calle Ferrocarril 10, Madrid', 40.401242, -3.694961, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Ferrocarril%2010%2C%20Madrid'),
+  ('restalia:0528', 'Fuencarral 145, Madrid', 40.432812, -3.70414, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Fuencarral%20145%2C%20Madrid'),
+  ('restalia:0074', 'Calle Madrid 29, Getafe', 40.306763, -3.730841, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Madrid%2029%2C%20Getafe'),
+  ('restalia:0013', 'Calle Mayor 22, Madrid', 40.416367, -3.707058, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Mayor%2022%2C%20Madrid'),
+  ('restalia:0160', 'Calle Mayor 71, Alcorcon', 40.344808, -3.827449, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Mayor%2071%2C%20Alcorcon'),
+  ('restalia:40.33782,-3.82800', 'Avenida las Retamas 76, Alcorcon', 40.337823528700554, -3.8280010721390942, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20las%20Retamas%2076%2C%20Alcorcon'),
+  ('restalia:0087', 'Calle de la Montera 34, Madrid', 40.41902, -3.701889, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20la%20Montera%2034%2C%20Madrid'),
+  ('restalia:0417', 'Calle Principe Carlos 40 (Sanchinarro), Madrid', 40.493035, -3.654995, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Principe%20Carlos%2040%20%28Sanchinarro%29%2C%20Madrid'),
+  ('restalia:0113', 'Calle Valentin Juara Bellot 4, Alcala de Henares', 40.494376, -3.358885, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Valentin%20Juara%20Bellot%204%2C%20Alcala%20de%20Henares'),
+  ('restalia:A024', 'Calle Silvano 77, Madrid', 40.463175, -3.636507, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Silvano%2077%2C%20Madrid'),
+  ('restalia:0060', 'Carretera Parla-Pinto (M-408), s/n', 40.241126, -3.757618, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Carretera%20Parla-Pinto%20%28M-408%29%2C%20s/n'),
+  ('restalia:40.47359,-3.87186', 'Calle Gran Via 5, Majadahonda', 40.473594283825435, -3.871864253965946, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Gran%20Via%205%2C%20Majadahonda'),
+  ('restalia:0032', 'Calle Fresa 2, Majadahonda', 40.454666, -3.874848, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Fresa%202%2C%20Majadahonda'),
+  ('restalia:0300', 'Plaza Juan Carlos I, s/n, Getafe', 40.296971, -3.746375, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20Juan%20Carlos%20I%2C%20s/n%2C%20Getafe'),
+  ('restalia:0240', 'Calle de los Quimicos 2, Majadahonda', 40.490613, -3.897829, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20los%20Quimicos%202%2C%20Majadahonda'),
+  ('restalia:0061', 'Avenida Gran Via de Hortaleza s/n, Madrid', 40.469307, -3.640872, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20Gran%20Via%20de%20Hortaleza%20s/n%2C%20Madrid'),
+  ('restalia:0122', 'Calle de la Calderilla 1, Madrid', 40.363189, -3.739278, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20la%20Calderilla%201%2C%20Madrid'),
+  ('restalia:0100', 'Autovia Madrid-Barcelona Km3, Alcala de Henares', 40.502665, -3.331272, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Autovia%20Madrid-Barcelona%20Km3%2C%20Alcala%20de%20Henares'),
+  ('restalia:0126', 'Calle de Adolfo Bioy Casares 2, Madrid', 40.368788, -3.597779, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20Adolfo%20Bioy%20Casares%202%2C%20Madrid'),
+  ('restalia:0544', 'Calle de Monforte de Lemos 36, Madrid', 40.479778, -3.707559, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20Monforte%20de%20Lemos%2036%2C%20Madrid'),
+  ('restalia:0116', 'Calle Rincon de las Heras 1, Collado Villalba', 40.635837, -4.008414, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Rincon%20de%20las%20Heras%201%2C%20Collado%20Villalba'),
+  ('restalia:40.63774,-4.01804', 'CC Planetocio, Collado Villalba', 40.637740962287054, -4.018039471163829, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20CC%20Planetocio%2C%20Collado%20Villalba'),
+  ('restalia:0542', 'Av Premios Nobel 15, Torrejon de Ardoz', 40.47054, -3.44313, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Av%20Premios%20Nobel%2015%2C%20Torrejon%20de%20Ardoz'),
+  ('restalia:0025', 'Carretera Ajalvir s/n, Torrejon de Ardoz', 40.477183, -3.479372, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Carretera%20Ajalvir%20s/n%2C%20Torrejon%20de%20Ardoz'),
+  ('restalia:0110', 'Calle del Parque Rivas, Rivas-Vaciamadrid', 40.341035, -3.535436, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20del%20Parque%20Rivas%2C%20Rivas-Vaciamadrid'),
+  ('restalia:0067', 'Avenida Gran Bretaña s/n, Local 121, Leganes', 40.338745, -3.733377, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20Gran%20Breta%C3%B1a%20s/n%2C%20Local%20121%2C%20Leganes'),
+  ('restalia:0038', 'Calle Hungria s/n, Fuenlabrada', 40.283044, -3.801231, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Hungria%20s/n%2C%20Fuenlabrada'),
+  ('restalia:0039', 'Plaza del Comercio 11 - 12, San Sebastian de los Reyes', 40.541252, -3.615, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20del%20Comercio%2011%20-%2012%2C%20San%20Sebastian%20de%20los%20Reyes'),
+  ('restalia:0079', 'Calle Aracne s/n, Madrid', 40.447482, -3.587223, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Aracne%20s/n%2C%20Madrid'),
+  ('restalia:000001', 'C/ de Antonio López, 109, Madrid', 40.39115741238568, -3.701479838524742, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C/%20de%20Antonio%20L%C3%B3pez%2C%20109%2C%20Madrid'),
+  ('restalia:0109', 'Calle Marie Curie 4, Rivas-Vaciamadrid', 40.337453, -3.526984, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Marie%20Curie%204%2C%20Rivas-Vaciamadrid'),
+  ('restalia:0009', 'Avenida America 7-9, Alcorcon', 40.358332, -3.831954, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20America%207-9%2C%20Alcorcon'),
+  ('restalia:0017', 'Autovia A-5, km. 22, Arroyomolinos', 40.299843, -3.924075, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Autovia%20A-5%2C%20km.%2022%2C%20Arroyomolinos'),
+  ('restalia:0192', 'Calle del Conde de Peñalver 37, Madrid', 40.428395, -3.675626, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20del%20Conde%20de%20Pe%C3%B1alver%2037%2C%20Madrid'),
+  ('restalia:0036', 'Calle Fuencarral 96, Madrid', 40.427768, -3.701737, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Fuencarral%2096%2C%20Madrid'),
+  ('restalia:40.38141,-3.66340', 'C.C. Madrid Sur. C/ Pablo Neruda Nº 91 - Local, P-20', 40.38141063112568, -3.66340081339457, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C.C.%20Madrid%20Sur.%20C/%20Pablo%20Neruda%20N%C2%BA%2091%20-%20Local%2C%20P-20'),
+  ('restalia:40.49335,-3.87659', 'C. Galicia - Plaza España, Las Rozas', 40.493351061010216, -3.876593517013993, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C.%20Galicia%20-%20Plaza%20Espa%C3%B1a%2C%20Las%20Rozas'),
+  ('restalia:0532', 'Avenida Monasterio de Silos Esquina Av. Monasterio de Sobrada, Portal 1, Madrid', 40.503235, -3.70418, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20Monasterio%20de%20Silos%20Esquina%20Av.%20Monasterio%20de%20Sobrada%2C%20Portal%201%2C%20Madrid'),
+  ('restalia:0313', 'Calle del Corregidor Diego de Valderrabano 25 (Moratalaz), Madrid', 40.411858, -3.658382, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20del%20Corregidor%20Diego%20de%20Valderrabano%2025%20%28Moratalaz%29%2C%20Madrid'),
+  ('restalia:40.40763,-3.64772', 'Av. de Moratalaz 149, Madrid', 40.407632629088305, -3.647724757672343, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Av.%20de%20Moratalaz%20149%2C%20Madrid'),
+  ('restalia:0006', 'Avenida Rio Guadalquivir 13, Getafe', 40.272226, -3.695946, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20Rio%20Guadalquivir%2013%2C%20Getafe'),
+  ('restalia:0008', 'Plaza de Felipe II, 28, Madrid', 40.423722, -3.673912, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20de%20Felipe%20II%2C%2028%2C%20Madrid'),
+  ('restalia:0238', 'Plaza de las Cortes 3, Madrid', 40.415895, -3.695851, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20de%20las%20Cortes%203%2C%20Madrid'),
+  ('restalia:0150', 'Plaza de Santa Barbara 9, Madrid', 40.426613, -3.696212, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20de%20Santa%20Barbara%209%2C%20Madrid'),
+  ('restalia:0294', 'Plaza del Conde de Casal 1, Madrid', 40.407098, -3.67079, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Plaza%20del%20Conde%20de%20Casal%201%2C%20Madrid'),
+  ('restalia:0124', 'Calle Felipe V, 4, Madrid', 40.418675, -3.710809, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20Felipe%20V%2C%204%2C%20Madrid'),
+  ('restalia:0394', 'Avenida de los Poblados 58, Madrid', 40.385871, -3.763773, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20los%20Poblados%2058%2C%20Madrid'),
+  ('restalia:0399', 'Paseo Federico Garcia Lorca, 17 (Villa de Vallecas), Madrid', 40.378176, -3.620803, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Paseo%20Federico%20Garcia%20Lorca%2C%2017%20%28Villa%20de%20Vallecas%29%2C%20Madrid'),
+  ('restalia:40.41846,-3.62086', 'CC las Rosas, Madrid', 40.41845532583256, -3.6208616507786497, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20CC%20las%20Rosas%2C%20Madrid'),
+  ('restalia:0441', 'Via de las Dos Castillas 15. Edificio Sur del "Centro Plaza Urbis", Pozuelo de Alarcon', 40.43427, -3.79856, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Via%20de%20las%20Dos%20Castillas%2015.%20Edificio%20Sur%20del%20%22Centro%20Plaza%20Urbis%22%2C%20Pozuelo%20de%20Alarcon'),
+  ('restalia:3018', 'Avenida de la Universidad 1, Fuenlabrada', 40.284929, -3.816225, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20la%20Universidad%201%2C%20Fuenlabrada'),
+  ('restalia:3041', 'Calle de Carretas 14, Madrid', 40.414914, -3.703454, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20Carretas%2014%2C%20Madrid'),
+  ('restalia:3085', 'Calle del General Ricardos 66, Madrid', 40.394354, -3.722309, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20del%20General%20Ricardos%2066%2C%20Madrid'),
+  ('restalia:3079', 'Calle del Principe 18, Madrid', 40.4153, -3.700365, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20del%20Principe%2018%2C%20Madrid'),
+  ('restalia:3049', 'Avenida de los Labradores 9-11, Tres Cantos', 40.599602, -3.708125, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Avenida%20de%20los%20Labradores%209-11%2C%20Tres%20Cantos'),
+  ('restalia:3052', 'C/ Mondragon s/n, Leganes', 40.35896, -3.776311, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C/%20Mondragon%20s/n%2C%20Leganes'),
+  ('restalia:40.34505,-3.75752', 'Av. Puerta del Sol, 2, Leganés, Madrid', 40.34504683029303, -3.7575198494227675, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Av.%20Puerta%20del%20Sol%2C%202%2C%20Legan%C3%A9s%2C%20Madrid'),
+  ('restalia:40.43832,-3.67687', 'Av. de América, 9, Madrid', 40.438319854895205, -3.676870732507922, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Av.%20de%20Am%C3%A9rica%2C%209%2C%20Madrid'),
+  ('restalia:40.42189,-3.71945', 'Paseo de la Florida 2, Madrid', 40.421885054282505, -3.719450504939521, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Paseo%20de%20la%20Florida%202%2C%20Madrid'),
+  ('restalia:40.50629,-3.66756', 'C/ San Miguel del Camino, 16 Fuencarral-el Pardo, Madrid', 40.506294704047335, -3.6675583512872723, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20C/%20San%20Miguel%20del%20Camino%2C%2016%20Fuencarral-el%20Pardo%2C%20Madrid'),
+  ('restalia:40.03364,-3.60451', 'Calle de San Antonio 56, Aranjuez', 40.033636795477825, -3.604505197331949, 'https://www.google.com/maps/search/?api=1&query=100%20Montaditos%2C%20Calle%20de%20San%20Antonio%2056%2C%20Aranjuez')
+  ) as s(place_id, address, lat, lng, maps_url)
+  where not exists (
+    select 1 from public.restaurants r
+    where r.name ilike '%montadito%' and abs(r.lat - s.lat) < 0.0014 and abs(r.lng - s.lng) < 0.0018)
+  on conflict (place_id) do nothing;
 
-  update public.restaurants
-     set menu_type = 'pdf',
-         menu_src = array['https://spain.100montaditos.com/assets/web/docs/100M%20Al%C3%A9rgenos.%20JULIO%202026.pdf'],
-         menu_updated_at = now()
-   where id = v_id;
-
-  delete from public.dishes where restaurant_id = v_id;
+  -- 2. La carta se guarda una vez, en el local de Tres Cantos.
+  select id into v_template from public.restaurants where place_id = 'osm:node/5134877837';
+  if v_template is null then raise exception 'No encuentro el 100 Montaditos de Tres Cantos'; end if;
+  delete from public.dishes where restaurant_id = v_template;
   insert into public.dishes (restaurant_id, position, section, name, allergens, traces)
-  select v_id, d.ord, d.value ->> 'section', d.value ->> 'name',
+  select v_template, d.ord, d.value ->> 'section', d.value ->> 'name',
          array(select jsonb_array_elements_text(d.value -> 'allergens')),
          array(select jsonb_array_elements_text(d.value -> 'traces'))
   from jsonb_array_elements(v_dishes) with ordinality as d(value, ord);
+
+  -- 3. Todos los 100 Montaditos usan esa carta y enlazan el PDF oficial.
+  update public.restaurants
+     set menu_type = 'pdf', menu_src = array[v_pdf], menu_updated_at = now(),
+         menu_from = case when id = v_template then null else v_template end
+   where name ilike '100 montaditos%';
+  delete from public.dishes d using public.restaurants r
+   where d.restaurant_id = r.id and r.menu_from = v_template;
 end $$;

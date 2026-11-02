@@ -33,6 +33,12 @@ export function createSupabaseBackend(url, anonKey) {
           .range(0, 4999),
       );
       for (const r of rows) r.dishes.sort((a, b) => a.position - b.position);
+      // Los locales de una cadena comparten la carta digital de otro restaurante.
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      for (const r of rows) {
+        const source = byId.get(r.menu_from);
+        if (source && !r.dishes.length) r.dishes = source.dishes;
+      }
       return rows;
     },
 
