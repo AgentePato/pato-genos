@@ -1,6 +1,8 @@
 """Utilidades compartidas por los scripts de cartas de cadenas."""
 
 import json
+import re
+import subprocess
 import time
 import urllib.parse
 import urllib.request
@@ -18,6 +20,61 @@ def get(url, accept="text/html"):
             if attempt == 3:
                 raise
             time.sleep(5 * (attempt + 1))
+
+
+SMALL_WORDS = {"de", "del", "la", "las", "los", "el", "y", "con", "sin", "al", "a", "en", "o"}
+ACRONYMS = {"vips", "bbq", "xl", "blt", "ny", "usa", "mi", "t2"}
+
+
+def nice(text, sentence=False):
+    """'ENSALADA CÉSAR' → 'Ensalada César'; con sentence=True, 'PARA PICAR' → 'Para picar'."""
+    text = re.sub(r"\s+", " ", text.strip()).lower()
+
+    def word(m):
+        w = m.group(0)
+        if w in ACRONYMS:
+            return w.upper()
+        if m.start() > 0 and (sentence or w in SMALL_WORDS):
+            return w
+        return w[:1].upper() + w[1:]
+    return re.sub(r"[^\W\d_]+", word, text)
+
+
+OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
+
+
+def fetch_osm_brand(brand, prefix):
+    """Locales de una cadena en la Comunidad de Madrid según OpenStreetMap (etiqueta brand).
+
+    Para cadenas cuya web no publica la lista de locales de forma aprovechable.
+    Se usa curl porque el Python de macOS no negocia bien el SSL de Overpass.
+    """
+    query = (f'[out:json][timeout:180];area["name"="Comunidad de Madrid"]["admin_level"="4"]->.a;'
+             f'nwr["amenity"~"^(restaurant|fast_food|cafe)$"]["brand"="{brand}"](area.a);out center tags;')
+    for attempt in range(6):
+        server = OVERPASS[attempt % len(OVERPASS)]
+        result = subprocess.run(["curl", "-s", "--max-time", "200", "-A", "pato-genos/1.0", server,
+                                 "--data-urlencode", f"data={query}"], capture_output=True, text=True)
+        try:
+            elements = json.loads(result.stdout)["elements"]
+            break
+        except (ValueError, KeyError):
+            time.sleep(15)
+    else:
+        raise SystemExit(f"OpenStreetMap no responde; vuelve a intentarlo más tarde ({brand}).")
+    stores = []
+    for e in elements:
+        tags = e["tags"]
+        lat = e.get("lat") or e["center"]["lat"]
+        lng = e.get("lon") or e["center"]["lon"]
+        street = " ".join(filter(None, [tags.get("addr:street"), tags.get("addr:housenumber")]))
+        town = tags.get("addr:city", "")
+        place = street or tags.get("addr:place") or tags.get("branch") or ""
+        stores.append(dict(place_id=f"{prefix}:osm-{e['type']}-{e['id']}",
+                           name=f"{brand} {tags['branch']}" if tags.get("branch") else (f"{brand} {place}" if place else brand),
+                           address=", ".join(filter(None, [street, town])), lat=lat, lng=lng))
+    return sorted(stores, key=lambda s: s["place_id"])
 
 
 def sql_text(value):

@@ -19,7 +19,7 @@ import re
 import sys
 import time
 
-from comun import ROOT, get, write_sql
+from comun import ROOT, get, nice, write_sql
 MENUS_URL = "https://alergenos.grupovips.com/app/allergens/courses.php?brand={brand}&country=ES"
 STARBUCKS_API = ("https://www.starbucks.es/api/v2/stores?filter%5Bcoordinates%5D%5Blatitude%5D={lat}"
                  "&filter%5Bcoordinates%5D%5Blongitude%5D={lng}")
@@ -30,9 +30,6 @@ ALLERGENS = {
     "ALE009": "apio", "ALE010": "mostaza", "ALE011": "sesamo", "ALE012": "sulfitos",
     "ALE013": "altramuces", "ALE014": "moluscos",
 }
-SMALL_WORDS = {"de", "del", "la", "las", "los", "el", "y", "con", "sin", "al", "a", "en", "o"}
-ACRONYMS = {"vips", "bbq", "xl", "blt", "ny", "usa", "mi", "t2"}
-
 # like = cómo se llama esa cadena si ya estaba en el mapa (p. ej. desde OpenStreetMap).
 CHAINS = {
     "vips": dict(name="VIPS", like="%vips%", cuisine="americana, hamburguesas",
@@ -46,20 +43,6 @@ CHAINS = {
     "starbucks": dict(name="Starbucks", like="%starbucks%", cuisine="cafetería", stores_url=None,
                       menu=lambda store: "starbucks"),
 }
-
-
-def nice(text, sentence=False):
-    """'ENSALADA CÉSAR' → 'Ensalada César'; con sentence=True, 'PARA PICAR' → 'Para picar'."""
-    text = re.sub(r"\s+", " ", text.strip()).lower()
-
-    def word(m):
-        w = m.group(0)
-        if w in ACRONYMS:
-            return w.upper()
-        if m.start() > 0 and (sentence or w in SMALL_WORDS):
-            return w
-        return w[:1].upper() + w[1:]
-    return re.sub(r"[^\W\d_]+", word, text)
 
 
 def fetch_menu(brand):
