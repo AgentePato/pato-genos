@@ -3,215 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cartas de Alérgenos - Mapa</title>
-    
-    <!-- Librerías del Mapa (Leaflet) -->
+    <title>Directorio de Alérgenos</title>
+    <meta name="description" content="Mapa de restaurantes con sus cartas de alérgenos.">
+    <link rel="icon" href="img/pato_boton.jpeg">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <link rel="stylesheet" href="style_index.css">
-
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="src/main.js"></script>
 </head>
 <body>
     <header>
         <h1>Directorio de Alérgenos</h1>
         <p>Encuentra restaurantes seguros cerca de ti</p>
-        
-        <!-- Botón a la pantalla de admin -->
+
         <a href="admin.html" title="Panel de Administración">
-            <img src="pato_boton.jpeg" alt="Admin" class="admin-btn">
+            <img src="img/pato_boton.jpeg" alt="Admin" class="admin-btn">
         </a>
     </header>
-    
+
     <!-- El dibujo 100% visible y debajo de la franja -->
-    <div class="dibujo-cabecera"></div>
-    
-    <div class="container">
+    <div class="dibujo-cabecera" role="img" aria-label="Patos cocinando"></div>
+
+    <main class="container">
         <div class="warning">
             ⚠️ <b>Aviso:</b> La información mostrada es orientativa. Informa siempre al personal del restaurante sobre tus alergias antes de pedir.
         </div>
 
-        <div class="search-container">
-            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar restaurante, zona o dirección...">
+        <div class="toolbar">
+            <input type="search" id="searchInput" class="search-input" placeholder="🔍 Buscar restaurante, zona o cocina...">
+            <button type="button" id="addButton" class="add-btn">＋ Añadir restaurante</button>
         </div>
+
+        <div class="chips" id="quickFilters"></div>
+        <div class="chips chips--allergens" id="allergenFilters" aria-label="Alérgenos que quiero evitar"></div>
 
         <div id="map"></div>
 
-        <div id="restaurant-details">
-            <!-- Mensaje de carga inicial -->
-            <div class="placeholder-message">
-                Conectando con la base de datos... 📡
-            </div>
+        <div class="results-head">
+            <span id="resultCount"></span>
+            <span id="modeBadge" class="mode-badge" hidden>Modo demo</span>
         </div>
-    </div>
+        <div id="restaurant-list">
+            <div class="placeholder-message">Conectando con la base de datos... 📡</div>
+        </div>
+    </main>
 
-    <script src="api-config.js"></script>
-    <script type="module">
-        let restaurants = [];
-        let currentMarkers = [];
-        let currentSearchText = '';
-        let selectedRestaurantName = null;
+    <dialog id="addDialog" class="add-dialog">
+        <form method="dialog" class="add-dialog__head">
+            <h2>Añadir restaurante</h2>
+            <button class="close-btn" aria-label="Cerrar">✕</button>
+        </form>
+        <p class="muted" id="addProvider"></p>
+        <input type="search" id="addSearch" class="search-input" placeholder="Nombre del restaurante..." autocomplete="off">
+        <div id="addResults" class="add-results"></div>
+    </dialog>
 
-        const map = L.map('map').setView([40.6007, -3.7079], 15);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri (Thailand), TomTom, 2012'
-        }).addTo(map);
-
-        async function cargarRestaurantes() {
-            try {
-                const response = await fetch(`${window.API_BASE_URL}/api/restaurants`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                restaurants = await response.json();
-                updateView();
-            } catch (error) {
-                console.error("Error obteniendo datos: ", error);
-                document.getElementById('restaurant-details').innerHTML = `
-                    <div class="placeholder-message" style="color: #ef4444; border-color: #fca5a5;">
-                        ❌ No se pudo conectar con la base de datos. Comprueba que la API está disponible.
-                    </div>
-                `;
-            }
-        }
-
-        function escapeHtml(value) {
-            return String(value).replace(/[&<>"']/g, character => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            })[character]);
-        }
-
-        function updateView() {
-            const lowerSearch = currentSearchText.toLowerCase();
-
-            const filteredRestaurants = restaurants.filter(restaurant => {
-                const rName = restaurant.name ? restaurant.name.toLowerCase() : '';
-                const rType = restaurant.type ? restaurant.type.toLowerCase() : '';
-                
-                if (lowerSearch === '') return true;
-                return rName.includes(lowerSearch) || rType.includes(lowerSearch);
-            });
-
-            currentMarkers.forEach(marker => map.removeLayer(marker));
-            currentMarkers = [];
-            
-            filteredRestaurants.forEach(restaurant => {
-                if(restaurant.lat && restaurant.lng) {
-                    const marker = L.marker([restaurant.lat, restaurant.lng]).addTo(map);
-                    marker.bindPopup(`<b>${escapeHtml(restaurant.name)}</b><br>Toca para ver la carta`);
-                    
-                    marker.on('click', () => {
-                        window.toggleRestaurantMenu(restaurant.name);
-                    });
-                    
-                    currentMarkers.push(marker);
-                }
-            });
-
-            const detailsDiv = document.getElementById('restaurant-details');
-            detailsDiv.innerHTML = '';
-
-            if (currentSearchText === '' && selectedRestaurantName === null) {
-                detailsDiv.innerHTML = `
-                    <div class="placeholder-message">
-                        Toca un restaurante en el mapa o usa el buscador para ver las cartas.
-                    </div>
-                `;
-                return;
-            }
-
-            if (filteredRestaurants.length === 0 && currentSearchText !== '') {
-                detailsDiv.innerHTML = `
-                    <div class="placeholder-message">
-                        No se han encontrado resultados para "${escapeHtml(currentSearchText)}".
-                    </div>
-                `;
-                return;
-            }
-
-            let restaurantsToRender = (currentSearchText === '') 
-                ? restaurants.filter(r => r.name === selectedRestaurantName) 
-                : filteredRestaurants;
-
-            let html = '';
-            restaurantsToRender.forEach(restaurant => {
-                const isSelected = restaurant.name === selectedRestaurantName;
-                const cardId = 'card-' + (restaurant.name ? restaurant.name.replace(/[^a-zA-Z0-9]/g, '-') : 'unknown');
-                
-                html += `
-                    <div class="restaurant-card" id="${escapeHtml(cardId)}">
-                        <div class="restaurant-header" data-restaurant-name="${escapeHtml(restaurant.name || '')}">
-                            <div class="restaurant-name">${escapeHtml(restaurant.name || 'Sin nombre')}</div>
-                            <div class="restaurant-type">${escapeHtml(restaurant.type || '')}</div>
-                        </div>
-                `;
-                
-                if (isSelected) {
-                    html += `<div class="menu-container">`;
-                    if (restaurant.hasMenu) {
-                        if (restaurant.menuType === 'pdf') {
-                            html += `
-                                <iframe src="${escapeHtml(restaurant.menuSrc)}" width="100%" height="600px" style="border:1px solid #cbd5e1; border-radius: 8px;"></iframe>
-                                <br>
-                                <a href="${escapeHtml(restaurant.menuSrc)}" target="_blank" rel="noopener noreferrer" class="view-btn">Abrir PDF en pantalla completa</a>
-                            `;
-                        } else if (restaurant.menuType === 'images' && Array.isArray(restaurant.menuSrc)) {
-                            let imagesHTML = '';
-                            restaurant.menuSrc.forEach(imagePath => {
-                                imagesHTML += `<img src="${escapeHtml(imagePath)}" alt="Parte de la carta" class="menu-image" style="margin-bottom: 15px;">`;
-                            });
-                            html += `
-                                ${imagesHTML}
-                                <div style="color: #64748b; font-size: 0.9em; margin-top: 10px;">Fin de la carta</div>
-                            `;
-                        }
-                    } else {
-                        html += `
-                            <div class="no-image-text">
-                                La carta de alérgenos de este restaurante se subirá próximamente.
-                            </div>
-                        `;
-                    }
-                    html += `</div>`; 
-                }
-                html += `</div>`; 
-            });
-
-            detailsDiv.innerHTML = html;
-        }
-
-        window.toggleRestaurantMenu = function(name) {
-            if (selectedRestaurantName === name) {
-                selectedRestaurantName = null;
-            } else {
-                selectedRestaurantName = name;
-            }
-            
-            updateView();
-            
-            if (selectedRestaurantName) {
-                setTimeout(() => {
-                    const cardId = 'card-' + name.replace(/[^a-zA-Z0-9]/g, '-');
-                    const el = document.getElementById(cardId);
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100); 
-            }
-        };
-
-        document.getElementById('searchInput').addEventListener('input', (event) => {
-            currentSearchText = event.target.value;
-            selectedRestaurantName = null; 
-            updateView();
-        });
-
-        document.getElementById('restaurant-details').addEventListener('click', event => {
-            const header = event.target.closest('.restaurant-header');
-            if (header) window.toggleRestaurantMenu(header.dataset.restaurantName);
-        });
-
-        cargarRestaurantes();
-    </script>
+    <div id="toast" class="toast" role="status" hidden></div>
 </body>
 </html>

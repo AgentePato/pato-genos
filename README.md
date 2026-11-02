@@ -1,59 +1,83 @@
-# Directorio de Alérgenos
+# Directorio de Alérgenos 🦆
 
-Web estática con un mapa Leaflet y un panel de administración. Los datos se guardan en SQLite mediante una API propia en FastAPI; Firebase ya no forma parte del funcionamiento de la aplicación.
+Mapa de restaurantes con sus cartas de alérgenos. Es una web estática (HTML + JS, sin compilar) que se publica en GitHub Pages, con la base de datos en Supabase, igual que [Patagenda](https://agentepato.github.io/Patagenda/).
 
-## Ejecutar localmente
+- **Mapa primero** con filtros rápidos: *Cerca de mí*, *Con carta de alérgenos* y los 14 alérgenos obligatorios (*Sin gluten*, *Sin lácteos*…).
+- **＋ Añadir restaurante**: cualquiera busca un sitio (Google Maps u OpenStreetMap) y lo añade al mapa. La base de datos se actualiza al momento.
+- **Panel del pato** (`admin.html`, botón del pato con bufanda): editar datos, subir la carta en PDF/imágenes o escribirla como **carta digital** plato a plato, que es la que permite filtrar.
 
-Se necesita Python 3.9 o posterior.
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-ADMIN_PASSWORD='elige-una-clave-segura' uvicorn app:app --reload
-```
-
-Abre <http://127.0.0.1:8000>. La base de datos se crea automáticamente en `data/restaurants.sqlite3`. El panel está en `/admin.html`. La contraseña solo se configura en el servidor mediante `ADMIN_PASSWORD`; no se guarda en el HTML.
-
-## Importar y mantener los datos
-
-El panel permite descargar el CSV actual e importar un CSV. Usa las columnas siguientes:
+## Estructura
 
 ```text
-id,name,type,lat,lng,hasMenu,menuType,menuSrc
+index.html, styles.css      Página pública (mapa, filtros, lista)
+admin.html, admin.css       Panel de administración
+img/                        Los dibujos de los patos
+src/config.js               Claves de Supabase y Google Maps
+src/main.js                 Lógica del mapa y del botón "Añadir restaurante"
+src/admin.js                Lógica del panel
+src/allergens.js            Los 14 alérgenos (claves, nombres, iconos)
+src/api/                    Supabase, modo demo y buscador de sitios
+data/restaurantes.json      Restaurantes iniciales (sacados de OpenStreetMap)
+supabase/schema.sql         Tablas, permisos y funciones de la base de datos
+supabase/seed.sql           Los mismos restaurantes iniciales, para Supabase
+scripts/importar_osm.py     Regenera data/ y seed.sql desde OpenStreetMap
 ```
 
-- `id` puede quedar vacío para crear un restaurante. Para actualizar uno ya existente, exporta la base actual y conserva su `id`; si no se proporciona, se actualizará por nombre exacto sin distinguir mayúsculas.
-- `name`, `lat` y `lng` son obligatorios; `type` contiene la dirección o zona que muestra la web.
-- `hasMenu` acepta `true`/`false`, `si`/`no` o `1`/`0`. `menuType` es `pdf` o `images`.
-- Para `menuType=images`, `menuSrc` puede ser una lista JSON, por ejemplo `["cartas/pagina1.jpg","cartas/pagina2.jpg"]`, o rutas separadas por comas. Para PDF es una sola ruta o URL.
-- Importar añade o actualiza filas; no borra restaurantes que no estén en el archivo. Una importación inválida se rechaza sin aplicar cambios parciales.
-
-Puedes usar [example_restaurants.csv](./example_restaurants.csv) como plantilla. También puedes importar directamente desde Python en el servidor:
+## Probar en local
 
 ```bash
-python import_csv.py restaurantes.csv
+python3 -m http.server 8000
 ```
 
-Ese comando y la API utilizan la misma base SQLite. Para cambiar su ubicación define `DATABASE_PATH`, por ejemplo `/var/data/restaurants.sqlite3`. Haz copias de seguridad regulares de ese archivo.
+Abre <http://localhost:8000>. Sin claves en `src/config.js` la web funciona en **modo demo**: lee `data/restaurantes.json` y lo que añadas o edites se guarda solo en tu navegador. En el panel, cualquier contraseña vale en modo demo.
 
-## Publicación
+## Poner la base de datos (Supabase, gratis)
 
-GitHub Pages solo sirve archivos estáticos: no puede ejecutar FastAPI ni guardar una SQLite persistente. Para publicar la web en GitHub Pages, aloja `app.py` en un servicio que permita ejecutar Python y conservar un volumen/archivo persistente, y configura:
+1. Crea un proyecto en [supabase.com](https://supabase.com).
+2. En **SQL Editor**, pega y ejecuta `supabase/schema.sql`, y después `supabase/seed.sql`.
+3. Define la contraseña del panel ejecutando (cambiando el texto):
+   ```sql
+   insert into public.admin_secret (password_hash)
+   values (extensions.crypt('tu-contraseña', extensions.gen_salt('bf')))
+   on conflict (id) do update set password_hash = excluded.password_hash;
+   ```
+4. En **Project Settings → API**, copia la *Project URL* y la *anon/publishable key* en `src/config.js`. La clave anónima es pública por diseño: la web solo puede leer, y todo lo que escribe pasa por funciones que validan los datos (`add_restaurant`) o piden la contraseña (`admin_*`).
 
-1. `ADMIN_PASSWORD` como secreto del servicio; usa HTTPS en producción.
-2. `DATABASE_PATH` en un disco persistente del servicio. No uses una ruta efímera ni varias instancias que escriban cada una en su propia copia de SQLite.
-3. `CORS_ORIGINS` con el origen exacto de GitHub Pages (por ejemplo, `https://usuario.github.io`).
-4. `API_BASE_URL` en [api-config.js](./api-config.js) con la URL HTTPS de la API, sin barra final.
+## Buscar en Google Maps al añadir (opcional)
 
-Como alternativa, el backend sirve también los archivos de esta carpeta: ejecuta Uvicorn y publica el sitio junto con la API desde el mismo servicio, usando la URL local/de producción en `api-config.js`.
+Sin clave, el buscador de *Añadir restaurante* usa OpenStreetMap, que es gratis pero no tiene todos los locales. Para buscar en Google Maps:
 
-## Datos que estaban en Firebase
+1. En [Google Cloud Console](https://console.cloud.google.com/) crea un proyecto y activa **Places API (New)**.
+2. Crea una clave de API y **restríngela** a *Places API (New)* y a tu dominio (`https://agentepato.github.io/*` y `http://localhost:8000/*`).
+3. Pégala en `googleMapsApiKey` de `src/config.js`.
 
-Esta carpeta no contiene los registros de Firestore; únicamente contiene el código que los consultaba. Por tanto, la nueva SQLite empieza vacía. Antes de retirar o borrar el proyecto de Firebase, exporta los restaurantes, conviértelos al formato CSV anterior e impórtalos desde el panel o con `import_csv.py`. Las rutas de `menuSrc` deben seguir apuntando a archivos accesibles por la web.
+Google da un crédito mensual gratuito; revisa los precios actuales antes de activarlo.
 
-## Pruebas
+## Los restaurantes iniciales
+
+Google Maps no permite descargar ni copiar su base de datos de sitios, así que la carga inicial sale de **OpenStreetMap** (datos libres, licencia ODbL). Para regenerarla o cambiar de municipio:
 
 ```bash
-python -m unittest discover -s tests
+python3 scripts/importar_osm.py "Tres Cantos"
 ```
+
+Después vuelve a ejecutar `supabase/seed.sql` en Supabase (no duplica los que ya estén). OpenStreetMap no tiene todos los locales: los que falten se añaden desde el botón de la web, buscando en Google Maps si hay clave configurada. Si un sitio ya está (mismo nombre a menos de ~100 m), no se duplica.
+
+## Cartas de alérgenos
+
+Cada restaurante puede tener dos tipos de carta, y se pueden combinar:
+
+- **Carta escaneada**: un PDF o varias imágenes. Sube los archivos a una carpeta `cartas/` del repositorio y pon la ruta en el panel (`cartas/vips.pdf`), o un enlace `https://`.
+- **Carta digital**: en el panel, una línea por plato con el formato `Sección | Plato | alérgenos`:
+  ```text
+  Entrantes | Croquetas de jamón | gluten, lácteos, huevo
+  Principales | Entrecot a la brasa |
+  Postres | Tarta de queso | lácteos, huevo, gluten
+  ```
+  Solo las cartas digitales se pueden filtrar: al marcar *Sin gluten*, el mapa muestra los restaurantes con algún plato sin gluten y, dentro de la carta, tacha los que lo llevan.
+
+Los platos se guardan en la tabla `dishes` de Supabase (`allergens` es una lista con las claves de `src/allergens.js`), así que también se pueden cargar en bloque con SQL o con un script.
+
+## Publicar
+
+Sube el repositorio a GitHub y activa **Settings → Pages** sobre la rama `main` (carpeta raíz). No hace falta servidor.

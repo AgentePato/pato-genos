@@ -1,0 +1,349 @@
+:root {
+    --band: #c7e3ee;
+    --duck-blue: #4f7090;
+    --duck-orange: #f2b04a;
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #f1f5f9;
+    --line: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --primary: #3b82f6;
+    --green: #10b981;
+    --danger: #b91c1c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+.muted { color: var(--muted); }
+.error { color: var(--danger); }
+
+/* Franja azul superior para el texto */
+header {
+    background-color: var(--band);
+    color: #0f172a;
+    padding: 25px 80px;
+    text-align: center;
+    position: relative;
+}
+header h1 { margin: 0; font-size: clamp(1.5em, 5vw, 2.2em); }
+header p { margin: 5px 0 0 0; font-size: 1.1em; opacity: 0.9; }
+
+/* Botón del pato que lleva al panel de admin */
+.admin-btn {
+    position: absolute;
+    top: 50%;
+    right: clamp(10px, 4vw, 25px);
+    transform: translateY(-50%);
+    width: clamp(45px, 6vw, 75px);
+    height: clamp(45px, 6vw, 75px);
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+.admin-btn:hover { transform: translateY(-50%) scale(1.1); }
+
+/* El dibujo de los patos cocinando */
+.dibujo-cabecera {
+    background-image: url('img/dibujo.jpeg');
+    aspect-ratio: 1900 / 529;
+    background-size: cover;
+    background-position: center;
+    width: 100%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.container { padding: 20px 16px; max-width: 800px; margin: auto; }
+
+.warning {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.85em;
+    margin-bottom: 20px;
+    border-left: 4px solid #f59e0b;
+}
+
+/* ---------- buscador y botón de añadir */
+.toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+.search-input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    padding: 14px 18px;
+    font-size: 1em;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.2s ease;
+    color: #334155;
+    background: var(--surface);
+}
+.search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+.search-input::placeholder { color: #94a3b8; }
+
+.add-btn {
+    flex-shrink: 0;
+    border: none;
+    border-radius: 12px;
+    padding: 0 18px;
+    font: inherit;
+    font-weight: bold;
+    color: #1e293b;
+    background: var(--duck-orange);
+    cursor: pointer;
+    box-shadow: 0 2px 0 #c98a2c;
+    transition: transform 0.1s;
+}
+.add-btn:active { transform: translateY(2px); box-shadow: none; }
+
+@media (max-width: 520px) {
+    .toolbar { flex-direction: column; }
+    .add-btn { padding: 12px; }
+}
+
+/* ---------- chips de filtro */
+.chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+}
+.chips--allergens { margin-bottom: 16px; }
+.chips__label { align-self: center; font-weight: bold; color: var(--muted); font-size: 0.9em; flex-shrink: 0; }
+.chip {
+    flex-shrink: 0;
+    border: 1.5px solid #cbd5e1;
+    background: var(--surface);
+    color: #334155;
+    border-radius: 999px;
+    padding: 7px 13px;
+    font: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+}
+.chip:hover { border-color: var(--duck-blue); }
+.chip--on { background: var(--duck-blue); border-color: var(--duck-blue); color: white; }
+.chip:disabled { opacity: 0.6; cursor: wait; }
+
+/* ---------- mapa */
+#map {
+    height: 420px;
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    z-index: 1;
+}
+@media (max-width: 520px) { #map { height: 340px; } }
+
+.pin {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--duck-blue);
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    font-size: 16px;
+    line-height: 1;
+}
+.pin--menu { background: var(--duck-orange); }
+.pin--selected { outline: 3px solid #0f172a; transform: scale(1.25); }
+
+.results-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    color: var(--muted);
+    font-size: 0.9em;
+}
+.mode-badge {
+    background: #ede9fe;
+    color: #5b21b6;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: bold;
+}
+
+/* ---------- tarjetas */
+.restaurant-card {
+    background: var(--surface);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    animation: fadeIn 0.3s ease-in-out;
+    scroll-margin-top: 12px;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.restaurant-header {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    font: inherit;
+    color: inherit;
+    background: var(--surface-2);
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.restaurant-header:hover { background-color: var(--line); }
+.restaurant-name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 1.2em; font-weight: bold; margin-bottom: 4px; color: #0f172a; }
+.restaurant-type { display: block; color: var(--muted); font-size: 0.9em; }
+.badge {
+    font-size: 0.65em;
+    background: #fde7c2;
+    color: #8a5300;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.menu-container {
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid var(--line);
+}
+.menu-pdf { width: 100%; height: 600px; border: 1px solid #cbd5e1; border-radius: 8px; }
+.menu-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    display: block;
+    margin: 0 auto 15px;
+}
+.no-image-text {
+    color: #94a3b8;
+    padding: 40px 20px;
+    font-style: italic;
+    border: 2px dashed var(--line);
+    border-radius: 8px;
+}
+.view-btn {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background-color: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+.view-btn:hover { background-color: #2563eb; }
+.maps-link {
+    display: block;
+    padding: 12px 20px;
+    border-top: 1px solid var(--line);
+    color: var(--duck-blue);
+    font-weight: bold;
+    text-decoration: none;
+}
+.maps-link:hover { background: var(--surface-2); }
+
+/* ---------- carta digital (platos con alérgenos) */
+.dishes { text-align: left; }
+.dishes__hint { margin: 0 0 12px; font-weight: bold; color: #047857; }
+.dishes h4 { margin: 16px 0 6px; color: var(--duck-blue); text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.05em; }
+.dishes ul { list-style: none; margin: 0; padding: 0; }
+.dish {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+.dish--unsafe .dish__name { color: #94a3b8; text-decoration: line-through; }
+.dish__allergens { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; font-size: 0.85em; }
+.allergen { font-size: 1.1em; }
+.allergen--hit { background: #fee2e2; border-radius: 6px; padding: 0 2px; }
+
+.more-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.placeholder-message {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 20px;
+    background: var(--bg);
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+}
+.placeholder-message.error { color: #ef4444; border-color: #fca5a5; }
+
+/* ---------- diálogo de añadir */
+.add-dialog {
+    width: min(560px, calc(100vw - 32px));
+    max-height: min(80vh, 640px);
+    border: none;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+}
+.add-dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+.add-dialog__head { display: flex; justify-content: space-between; align-items: center; }
+.add-dialog h2 { margin: 0; font-size: 1.3em; }
+.add-dialog p { margin: 6px 0 14px; font-size: 0.9em; }
+.close-btn { border: none; background: none; font-size: 1.3em; cursor: pointer; color: var(--muted); }
+.add-results { margin-top: 12px; }
+.add-result {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+}
+.add-result .muted { font-size: 0.85em; }
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
+    background: #0f172a;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 1000;
+}
