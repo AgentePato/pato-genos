@@ -1,5 +1,7 @@
 # Directorio de Alérgenos 🦆
 
+🌐 **Web:** https://agentepato.github.io/pato-genos/
+
 Mapa de restaurantes con sus cartas de alérgenos. Es una web estática (HTML + JS, sin compilar) que se publica en GitHub Pages, con la base de datos en Supabase, igual que [Patagenda](https://agentepato.github.io/Patagenda/).
 
 - **Mapa primero** con filtros rápidos: *Cerca de mí*, *Con carta de alérgenos* y los 14 alérgenos obligatorios (*Sin gluten*, *Sin lácteos*…).
