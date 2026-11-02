@@ -87,13 +87,21 @@ python3 -m venv .venv && .venv/bin/pip install pdfplumber
 
 El script también descarga la lista oficial de locales de la web de 100 Montaditos. Después ejecuta `supabase/cartas/100-montaditos.sql` en el SQL Editor de Supabase: da de alta los locales de la Comunidad de Madrid que falten y les asigna la carta. La carta se guarda una sola vez, en el local de Tres Cantos, y los demás la comparten (columna `menu_from`), así que al actualizarla cambia en todos.
 
-VIPS publica sus cartas de alérgenos como datos en [alergenos.grupovips.com](https://alergenos.grupovips.com/index.html?brand=vips&lang=es), así que su script no necesita PDF ni dependencias:
+### Cadenas incluidas
 
-```bash
-python3 scripts/cartas/vips.py
-```
+Cada cadena tiene un script en `scripts/cartas/` que genera `supabase/cartas/<cadena>.sql`. Como en 100 Montaditos, cada carta se guarda una sola vez y los locales la comparten.
 
-Genera `supabase/cartas/vips.sql` con los VIPS de la Comunidad de Madrid (lista oficial de vips.es) y las cartas de VIPS y VIPS Smart. Como la de 100 Montaditos, cada carta se guarda una vez y los locales la comparten. VIPS actualiza sus cartas a menudo: vuelve a ejecutar el script y el SQL para ponerlas al día.
+| Cadena | Script | Carta de alérgenos | Locales (Comunidad de Madrid) |
+|---|---|---|---|
+| 100 Montaditos | `100montaditos.py` (necesita pdfplumber) | PDF oficial | web oficial |
+| VIPS, VIPS Smart, Ginos, Foster's Hollywood, Starbucks | `grupo_vips.py` | [alergenos.grupovips.com](https://alergenos.grupovips.com/index.html?brand=vips&lang=es) | web oficial de cada marca |
+| Goiko (y su local sin gluten) | `goiko.py` | goiko.com/es/alergenos | API de su web |
+| Telepizza, Pizza Hut | `telepizza_pizzahut.py` (pdfplumber) | PDF oficial | OpenStreetMap |
+| Papa John's, Pans & Company | `tablas_pdf.py` (pdfplumber) | PDF oficial | OpenStreetMap |
+
+Para cargarlas todas de una vez, ejecuta `supabase/cartas/todas.sql` (después de `schema.sql`). Si regeneras alguna cadena, vuelve a juntarlas con `python3 scripts/cartas/juntar.py`. Las cartas cambian a menudo: conviene regenerarlas de vez en cuando.
+
+Los locales que salen de OpenStreetMap no siempre están todos ni tienen dirección completa; los que falten se pueden añadir desde la web.
 
 Para enlazar el mapa filtrado por una cadena, usa `?q=`, por ejemplo <https://agentepato.github.io/pato-genos/?q=vips>.
 

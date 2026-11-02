@@ -56,7 +56,7 @@ def parse_pdf(path, chain):
                         continue
                     contains = [KEYS[i] for i, m in enumerate(marks) if m.startswith(chain["contains"])]
                     traces = [KEYS[i] for i, m in enumerate(marks) if m.startswith(chain["traces"]) and KEYS[i] not in contains]
-                    name = re.sub(r"\s*\(PC\)$", "", name)  # Pans: "(PC)" = precio de carta
+                    name = re.sub(r"\s*\(PC\)$", "", name)  # Pans añade "(PC)" a casi todos los nombres
                     dishes.append(dict(section=section, name=name, allergens=contains, traces=traces))
     return dict(dishes=dishes, date="")
 
