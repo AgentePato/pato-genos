@@ -87,6 +87,16 @@ python3 -m venv .venv && .venv/bin/pip install pdfplumber
 
 El script también descarga la lista oficial de locales de la web de 100 Montaditos. Después ejecuta `supabase/cartas/100-montaditos.sql` en el SQL Editor de Supabase: da de alta los locales de la Comunidad de Madrid que falten y les asigna la carta. La carta se guarda una sola vez, en el local de Tres Cantos, y los demás la comparten (columna `menu_from`), así que al actualizarla cambia en todos.
 
+VIPS publica sus cartas de alérgenos como datos en [alergenos.grupovips.com](https://alergenos.grupovips.com/index.html?brand=vips&lang=es), así que su script no necesita PDF ni dependencias:
+
+```bash
+python3 scripts/cartas/vips.py
+```
+
+Genera `supabase/cartas/vips.sql` con los VIPS de la Comunidad de Madrid (lista oficial de vips.es) y las cartas de VIPS y VIPS Smart. Como la de 100 Montaditos, cada carta se guarda una vez y los locales la comparten. VIPS actualiza sus cartas a menudo: vuelve a ejecutar el script y el SQL para ponerlas al día.
+
+Para enlazar el mapa filtrado por una cadena, usa `?q=`, por ejemplo <https://agentepato.github.io/pato-genos/?q=vips>.
+
 Los platos se guardan en la tabla `dishes` de Supabase (`allergens` y `traces` son listas con las claves de `src/allergens.js`), así que también se pueden cargar en bloque con SQL o con un script.
 
 ## Publicar

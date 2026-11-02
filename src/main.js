@@ -202,11 +202,13 @@ function renderList(list) {
   );
 }
 
-function update() {
+function update({ fit = false } = {}) {
   const list = filtered();
   renderFilters();
   renderMarkers(list);
   renderList(list);
+  // Al buscar, el mapa enseña todos los resultados (p. ej. todos los VIPS).
+  if (fit && list.length) map.fitBounds(L.latLngBounds(list.map((r) => [r.lat, r.lng])), { padding: [30, 30], maxZoom: 16 });
 }
 
 function select(id, { scroll = false } = {}) {
@@ -309,11 +311,15 @@ async function loadRestaurants() {
   state.restaurants = await backend.listRestaurants();
 }
 
+let fitTimer;
 $('searchInput').addEventListener('input', (e) => {
   state.search = e.target.value;
   state.selectedId = null;
   state.shown = PAGE_SIZE;
   update();
+  // Se encuadra al dejar de escribir, para que el mapa no salte con cada letra.
+  clearTimeout(fitTimer);
+  if (state.search.trim()) fitTimer = setTimeout(() => update({ fit: true }), 600);
 });
 $('addButton').addEventListener('click', openAddDialog);
 $('addSearch').addEventListener('input', runPlaceSearch);
@@ -322,7 +328,10 @@ try {
   backend = await createBackend(config);
   $('modeBadge').hidden = backend.mode !== 'demo';
   await loadRestaurants();
-  update();
+  // Enlace directo a una búsqueda: …/pato-genos/?q=vips
+  state.search = new URLSearchParams(location.search).get('q') ?? '';
+  $('searchInput').value = state.search;
+  update({ fit: Boolean(state.search) });
 } catch (error) {
   console.error(error);
   replaceContent($('restaurant-list'), h('div', { class: 'placeholder-message error' },
